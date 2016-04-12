@@ -160,9 +160,8 @@ int main()
  cl_kernel kernel = clCreateKernel(program, "Filter", &error);
 
  // OpenCL only supports RGBA, so we need to convert here
- const auto image = RGBtoRGBA(LoadImage("test.png"));
- ILubyte* image;
- ReadImage("sukub/imL.png", image);
+ const auto image = RGBtoRGBA(LoadImage("test.ppm"));
+ 
 
  static const cl_image_format format = { CL_RGBA, CL_UNORM_INT8 };
  cl_mem inputImage = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format,  image.width, image.height, 0,  // This is a bug in the spec
