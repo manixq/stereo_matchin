@@ -8,6 +8,5 @@
 #include <fstream>
 #include <sstream>
 #include "CL/cl.h"
-#include <IL/il.h>
-#include <IL/ilu.h>
+#include "lodepng.h"
 #endif
