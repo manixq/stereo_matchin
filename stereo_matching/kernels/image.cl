@@ -16,9 +16,9 @@ int ispixeleq(float4 a,float4 b)
 __kernel void Filter (
 	__read_only image2d_t input,
  __read_only image2d_t input2,
-	__constant float* filterWeights,
 	__write_only image2d_t output,
- __constant int* my_width)
+ __constant int* my_width,
+ __local int* local_var)
 {
 
     const int2 pos = {get_global_id(0), get_global_id(1)};
@@ -34,10 +34,12 @@ __kernel void Filter (
       float4 b3 = read_imagef(input2, sampler, pos + (int2)(x + 2, 0));
       if (ispixeleq(a1, b1) || ispixeleq(a2, b2) || ispixeleq(a3, b3))//mogloby byc a1,b2 ; a1,b3 ->ale wtedy nie 'rozmyje'
       {
-       sum = (float4)(0, x / (*my_width) * 30, 0, 1);
+
+       sum = (float4)(0, x / (*my_width)*10 +0.1, 0, 1);//aktualny kod pic: " (*my_width)*30 "
        break;
       }
      
     }
+     //barrier(CLK_LOCAL_MEM_FENCE);
     write_imagef (output, (int2)(pos.x, pos.y), sum);
 }

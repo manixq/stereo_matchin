@@ -40,18 +40,6 @@ int main()
  cl_int error = CL_SUCCESS;
  cl_context context = clCreateContext(contextProperties, deviceIdCount,  deviceIds.data(), nullptr, nullptr, &error);
 
- // Simple Gaussian blur filter
- float filter[] = {
-  1, 2, 1, 2,
-  2, 4, 2, 4,
-  1, 2, 1, 2,
-  1, 4, 2, 4
- };
-
- // Normalize the filter
- for (int i = 0; i < 16; ++i) {
-  filter[i] /= 13.0f;
- }
 
 
  Image imgL;
@@ -63,7 +51,7 @@ int main()
  // Create a program from source
  cl_program program = CreateProgram(LoadKernel("kernels/image.cl"),  context);
 
- clBuildProgram(program, deviceIdCount, deviceIds.data(), "-D FILTER_SIZE=1", nullptr, nullptr);
+ clBuildProgram(program, deviceIdCount, deviceIds.data(), nullptr, nullptr, nullptr);
 
  cl_kernel kernel = clCreateKernel(program, "Filter", &error);
 
@@ -77,14 +65,13 @@ int main()
 
  int mywidth = imgL.width;
  cl_mem outputImage = clCreateImage2D(context, CL_MEM_WRITE_ONLY, &format,  imgL.width, imgL.height, 0,  nullptr, &error);
-
- cl_mem filterWeightsBuffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR,  sizeof(float) * 16, filter, &error);
  cl_mem my_width = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int) , &mywidth, &error);
+
  clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputImage);
  clSetKernelArg(kernel, 1, sizeof(cl_mem), &inputImage2);
- clSetKernelArg(kernel, 2, sizeof(cl_mem), &filterWeightsBuffer);
- clSetKernelArg(kernel, 3, sizeof(cl_mem), &outputImage);
- clSetKernelArg(kernel, 4, sizeof(cl_mem), &my_width);
+ clSetKernelArg(kernel, 2, sizeof(cl_mem), &outputImage);
+ clSetKernelArg(kernel, 3, sizeof(cl_mem), &my_width);
+ clSetKernelArg(kernel, 4, sizeof(int), nullptr);
 
  cl_command_queue queue = clCreateCommandQueue(context, deviceIds[0],  0, &error);
  
@@ -104,7 +91,6 @@ int main()
  lodepng::encode("sukub/niewiem.png", result.pixel , result.width, result.height);
 
  clReleaseMemObject(outputImage);
- clReleaseMemObject(filterWeightsBuffer);
  clReleaseMemObject(inputImage);
  clReleaseMemObject(inputImage2);
  clReleaseCommandQueue(queue);
