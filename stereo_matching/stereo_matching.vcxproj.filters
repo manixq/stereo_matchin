@@ -31,8 +31,8 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="kernels\image.cl">
+    <ResourceCompile Include="kernels\image.cl">
       <Filter>Source Files</Filter>
-    </None>
+    </ResourceCompile>
   </ItemGroup>
 </Project>
