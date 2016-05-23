@@ -157,10 +157,14 @@
     <ClInclude Include="lodepng.h" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="kernels\image.cl">
+    <ResourceCompile Include="kernels\depth.cl">
       <FileType>Document</FileType>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="kernels\decimate.cl" />
+    <None Include="kernels\interpolate.cl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

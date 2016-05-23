@@ -47,9 +47,10 @@ int main()
  Image imgR;
  lodepng::decode(imgR.pixel, imgR.width, imgR.height, "sukub/imL.png");
 
+ //DEEEEEEEEEEEEEEEEEEEEPTH
 
  // Create a program from source
- cl_program program = CreateProgram(LoadKernel("kernels/image.cl"),  context);
+ cl_program program = CreateProgram(LoadKernel("kernels/depth.cl"),  context);
 
  clBuildProgram(program, deviceIdCount, deviceIds.data(), nullptr, nullptr, nullptr);
 
@@ -88,11 +89,92 @@ int main()
  std::size_t region[3] = {imgL.width, imgL.height, 1 };
  clEnqueueReadImage(queue, outputImage, CL_TRUE,  origin, region, 0, 0,  result.pixel.data(), 0, nullptr, nullptr);
 
- lodepng::encode("sukub/niewiem.png", result.pixel , result.width, result.height);
+ lodepng::encode("sukub/depth.png", result.pixel , result.width, result.height);
 
  clReleaseMemObject(outputImage);
  clReleaseMemObject(inputImage);
  clReleaseMemObject(inputImage2);
+ clReleaseCommandQueue(queue);
+ clReleaseKernel(kernel);
+ clReleaseProgram(program);
+
+ //DECYMACJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa
+
+ // Create a program from source
+ program = CreateProgram(LoadKernel("kernels/decimate.cl"), context);
+
+ clBuildProgram(program, deviceIdCount, deviceIds.data(), nullptr, nullptr, nullptr);
+
+  kernel = clCreateKernel(program, "Filter", &error);
+
+
+
+ inputImage = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result.width, result.height, 0,  // This is a bug in the spec
+  const_cast<unsigned char*> (result.pixel.data()), &error);
+ 
+
+  outputImage = clCreateImage2D(context, CL_MEM_WRITE_ONLY, &format, result.width, result.height, 0, nullptr, &error);
+ 
+ clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputImage);
+ clSetKernelArg(kernel, 1, sizeof(cl_mem), &outputImage);
+
+ queue = clCreateCommandQueue(context, deviceIds[0], 0, &error);
+
+ clEnqueueNDRangeKernel(queue, kernel, 2, offset, size, nullptr, 0, nullptr, nullptr);
+
+ result = imgL;
+
+ std::fill(result.pixel.begin(), result.pixel.end(), 0);
+
+  region[0] = imgL.width;
+ clEnqueueReadImage(queue, outputImage, CL_TRUE, origin, region, 0, 0, result.pixel.data(), 0, nullptr, nullptr);
+
+ lodepng::encode("sukub/decimated_depth.png", result.pixel, result.width, result.height);
+
+
+
+ clReleaseMemObject(outputImage);
+ clReleaseMemObject(inputImage);
+ clReleaseCommandQueue(queue);
+ clReleaseKernel(kernel);
+ clReleaseProgram(program);
+
+ //INTERPOLACJAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa
+
+ // Create a program from source
+ program = CreateProgram(LoadKernel("kernels/interpolate.cl"), context);
+
+ clBuildProgram(program, deviceIdCount, deviceIds.data(), nullptr, nullptr, nullptr);
+
+ kernel = clCreateKernel(program, "Filter", &error);
+
+
+
+ inputImage = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result.width, result.height, 0,  // This is a bug in the spec
+  const_cast<unsigned char*> (result.pixel.data()), &error);
+
+
+ outputImage = clCreateImage2D(context, CL_MEM_WRITE_ONLY, &format, result.width, result.height, 0, nullptr, &error);
+
+ clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputImage);
+ clSetKernelArg(kernel, 1, sizeof(cl_mem), &outputImage);
+
+ queue = clCreateCommandQueue(context, deviceIds[0], 0, &error);
+
+ clEnqueueNDRangeKernel(queue, kernel, 2, offset, size, nullptr, 0, nullptr, nullptr);
+
+ result = imgL;
+
+ std::fill(result.pixel.begin(), result.pixel.end(), 0);
+
+ region[0] = imgL.width;
+ clEnqueueReadImage(queue, outputImage, CL_TRUE, origin, region, 0, 0, result.pixel.data(), 0, nullptr, nullptr);
+
+ lodepng::encode("sukub/interpolated_depth.png", result.pixel, result.width, result.height);
+
+
+ clReleaseMemObject(outputImage);
+ clReleaseMemObject(inputImage);
  clReleaseCommandQueue(queue);
  clReleaseKernel(kernel);
  clReleaseProgram(program);
