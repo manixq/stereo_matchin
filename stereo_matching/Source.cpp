@@ -31,14 +31,14 @@ int main()
  clGetPlatformIDs(platformIdCount, platformIds.data(), nullptr);
 
  cl_uint deviceIdCount = 0;
- clGetDeviceIDs(platformIds[0], CL_DEVICE_TYPE_GPU, 0, nullptr, &deviceIdCount);
+ clGetDeviceIDs(platformIds[1], CL_DEVICE_TYPE_GPU, 0, nullptr, &deviceIdCount);
 
  std::vector<cl_device_id> deviceIds(deviceIdCount);
- clGetDeviceIDs(platformIds[0], CL_DEVICE_TYPE_GPU, deviceIdCount, deviceIds.data(), nullptr);
+ clGetDeviceIDs(platformIds[1], CL_DEVICE_TYPE_GPU, deviceIdCount, deviceIds.data(), nullptr);
  char buffer[10240];
  clGetDeviceInfo(deviceIds.data()[0], CL_DEVICE_NAME, sizeof(buffer), buffer, NULL);
  printf("  DEVICE_NAME = %s\n", buffer);
- const cl_context_properties contextProperties[] = { CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties> (platformIds[0]),  0, 0 };
+ const cl_context_properties contextProperties[] = { CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties> (platformIds[1]),  0, 0 };
  cl_int error = CL_SUCCESS;
 
  cl_context context = clCreateContext(contextProperties, deviceIdCount, deviceIds.data(), nullptr, nullptr, &error);
@@ -73,7 +73,8 @@ int main()
  clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputImage);
  clSetKernelArg(kernel, 1, sizeof(cl_mem), &outputImage);
  cl_command_queue queue = clCreateCommandQueue(context, deviceIds[0], 0, &error);
- clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, size, nullptr, 0, nullptr, nullptr);
+ std::size_t local_group_size[2] = { 16, 16 };
+ clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, size, local_group_size, 0, nullptr, nullptr);
  clEnqueueReadImage(queue, outputImage, CL_TRUE, origin, region, 0, 0, result.pixel.data(), 0, nullptr, nullptr);
  lodepng::encode("sukub/decimated_depth.png", result.pixel, result.width, result.height);
  clReleaseMemObject(outputImage);
