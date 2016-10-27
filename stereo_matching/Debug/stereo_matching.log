@@ -1,0 +1,6 @@
+﻿  Source.cpp
+c:\users\mike\desktop\opencl\stereo_matchin\stereo_matching\source.cpp(35): warning C4018: '<': signed/unsigned mismatch
+c:\users\mike\desktop\opencl\stereo_matchin\stereo_matching\source.cpp(43): warning C4018: '<': signed/unsigned mismatch
+c:\users\mike\desktop\opencl\stereo_matchin\stereo_matching\source.cpp(47): warning C4018: '<': signed/unsigned mismatch
+c:\users\mike\desktop\opencl\stereo_matchin\stereo_matching\source.cpp(58): warning C4101: 'device': unreferenced local variable
+  stereo_matching.vcxproj -> C:\Users\Mike\Desktop\OpenCL\stereo_matchin\Debug\stereo_matching.exe

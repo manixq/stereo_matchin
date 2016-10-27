@@ -25,23 +25,49 @@ cl_program CreateProgram(const std::string& source, cl_context context)
 
 int main()
 {
+ //menu
+ cl_uint total_device_number = 0;
  cl_uint platformIdCount = 0;
  clGetPlatformIDs(0, nullptr, &platformIdCount);
+ cl_uint* deviceIdCount = new cl_uint[platformIdCount];
  std::vector<cl_platform_id> platformIds(platformIdCount);
  clGetPlatformIDs(platformIdCount, platformIds.data(), nullptr);
-
- cl_uint deviceIdCount = 0;
- clGetDeviceIDs(platformIds[1], CL_DEVICE_TYPE_GPU, 0, nullptr, &deviceIdCount);
-
- std::vector<cl_device_id> deviceIds(deviceIdCount);
- clGetDeviceIDs(platformIds[1], CL_DEVICE_TYPE_GPU, deviceIdCount, deviceIds.data(), nullptr);
+ for (int i = 0; i < platformIdCount; i++)
+ {
+  clGetDeviceIDs(platformIds[i], CL_DEVICE_TYPE_ALL, 0, nullptr, &deviceIdCount[i]);
+  total_device_number += deviceIdCount[i];
+ }
+ std::vector<cl_device_id> deviceIds(total_device_number);
  char buffer[10240];
- clGetDeviceInfo(deviceIds.data()[0], CL_DEVICE_NAME, sizeof(buffer), buffer, NULL);
- printf("  DEVICE_NAME = %s\n", buffer);
- const cl_context_properties contextProperties[] = { CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties> (platformIds[1]),  0, 0 };
+ size_t work_group_max;
+ for (int i = 0; i < platformIdCount; i++)
+ {
+  printf("Platform Id: %d\n", i);
+  clGetDeviceIDs(platformIds[i], CL_DEVICE_TYPE_ALL, deviceIdCount[i], deviceIds.data(), nullptr);
+  for (int j = 0; j < deviceIdCount[i]; j++)
+  {
+   clGetDeviceInfo(deviceIds.data()[j], CL_DEVICE_NAME, sizeof(buffer), buffer, nullptr);
+   clGetDeviceInfo(deviceIds[i], CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), &work_group_max, nullptr);
+   printf("\t- Device Id: %d\n", j);
+   printf("\t- Device name: %s\n", buffer);
+   printf("\t- Device max work group size: %d\n\n", work_group_max);
+  }
+ }
+
+ //user_inputs
+ cl_device_id device;
+ int device_id, platform_id;
+ printf("\nSelect platform: ");
+ scanf("%d", &platform_id);
+ printf("Select device: ");
+ scanf("%d", &device_id);
+ clGetDeviceIDs(platformIds[platform_id],CL_DEVICE_TYPE_ALL,deviceIdCount[platform_id], deviceIds.data(), nullptr);
+
+ //lets_go
+ const cl_context_properties contextProperties[] = { CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties> (platformIds[platform_id]),  0, 0 };
  cl_int error = CL_SUCCESS;
 
- cl_context context = clCreateContext(contextProperties, deviceIdCount, deviceIds.data(), nullptr, nullptr, &error);
+ cl_context context = clCreateContext(contextProperties, deviceIdCount[platform_id], &deviceIds[device_id], nullptr, nullptr, &error);
 
  Image imgL;
  lodepng::decode(imgL.pixel, imgL.width, imgL.height, "sukub/imP.png");
@@ -62,7 +88,7 @@ int main()
  //DECIMATION
  // Create a program from source
  cl_program program = CreateProgram(LoadKernel("kernels/decimate.cl"), context);
- clBuildProgram(program, deviceIdCount, deviceIds.data(), nullptr, nullptr, nullptr);
+ clBuildProgram(program, deviceIdCount[platform_id], &deviceIds[device_id], nullptr, nullptr, nullptr);
  cl_kernel kernel = clCreateKernel(program, "Decimate", &error);
  cl_mem inputImage = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result.width, result.height, 0, const_cast<unsigned char*> (result.pixel.data()), &error);
  //Now our result is new result
@@ -72,7 +98,7 @@ int main()
  cl_mem outputImage = clCreateImage2D(context, CL_MEM_WRITE_ONLY, &format, result.width, result.height, 0, nullptr, &error);
  clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputImage);
  clSetKernelArg(kernel, 1, sizeof(cl_mem), &outputImage);
- cl_command_queue queue = clCreateCommandQueue(context, deviceIds[0], 0, &error);
+ cl_command_queue queue = clCreateCommandQueue(context, deviceIds[device_id], 0, &error);
  std::size_t local_group_size[2] = { 16, 16 };
  clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, size, local_group_size, 0, nullptr, nullptr);
  clEnqueueReadImage(queue, outputImage, CL_TRUE, origin, region, 0, 0, result.pixel.data(), 0, nullptr, nullptr);
