@@ -43,6 +43,7 @@ int main()
   std::vector<cl_device_id> deviceIds(total_device_number);
   char buffer[10240];
   size_t work_group_max;
+  cl_uint compute_units;
   for (int i = 0; i < platformIdCount; i++)
   {
    printf("Platform Id: %d\n", i);
@@ -51,8 +52,10 @@ int main()
    {
     clGetDeviceInfo(deviceIds.data()[j], CL_DEVICE_NAME, sizeof(buffer), buffer, nullptr);
     clGetDeviceInfo(deviceIds[i], CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), &work_group_max, nullptr);
+    clGetDeviceInfo(deviceIds[i], CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(cl_uint), &compute_units, nullptr);
     printf("\t- Device Id: %d\n", j);
     printf("\t- Device name: %s\n", buffer);
+    printf("\t- Device max compute units: %d\n", compute_units);
     printf("\t- Device max work group size: %d\n\n", work_group_max);
    }
   }

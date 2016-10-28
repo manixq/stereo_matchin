@@ -1,7 +1,7 @@
 ﻿  Source.cpp
 c:\users\mike\desktop\opencl\stereo_matchin\stereo_matching\source.cpp(38): warning C4018: '<': signed/unsigned mismatch
-c:\users\mike\desktop\opencl\stereo_matchin\stereo_matching\source.cpp(46): warning C4018: '<': signed/unsigned mismatch
-c:\users\mike\desktop\opencl\stereo_matchin\stereo_matching\source.cpp(50): warning C4018: '<': signed/unsigned mismatch
-c:\users\mike\desktop\opencl\stereo_matchin\stereo_matching\source.cpp(116): warning C4244: 'initializing': conversion from '__int64' to 'long', possible loss of data
-c:\users\mike\desktop\opencl\stereo_matchin\stereo_matching\source.cpp(61): warning C4101: 'device': unreferenced local variable
+c:\users\mike\desktop\opencl\stereo_matchin\stereo_matching\source.cpp(47): warning C4018: '<': signed/unsigned mismatch
+c:\users\mike\desktop\opencl\stereo_matchin\stereo_matching\source.cpp(51): warning C4018: '<': signed/unsigned mismatch
+c:\users\mike\desktop\opencl\stereo_matchin\stereo_matching\source.cpp(119): warning C4244: 'initializing': conversion from '__int64' to 'long', possible loss of data
+c:\users\mike\desktop\opencl\stereo_matchin\stereo_matching\source.cpp(64): warning C4101: 'device': unreferenced local variable
   stereo_matching.vcxproj -> C:\Users\Mike\Desktop\OpenCL\stereo_matchin\Debug\stereo_matching.exe
