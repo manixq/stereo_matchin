@@ -37,17 +37,17 @@ int main()
   clGetPlatformIDs(platformIdCount, platformIds.data(), nullptr);
   for (int i = 0; i < platformIdCount; i++)
   {
-   clGetDeviceIDs(platformIds[i], CL_DEVICE_TYPE_ALL, 0, nullptr, &deviceIdCount[i]);
+   clGetDeviceIDs(platformIds[i], CL_DEVICE_TYPE_GPU, 0, nullptr, &deviceIdCount[i]);
    total_device_number += deviceIdCount[i];
   }
   std::vector<cl_device_id> deviceIds(total_device_number);
   char buffer[10240];
-  size_t work_group_max;
-  cl_uint compute_units;
+  size_t work_group_max = 0;
+  cl_uint compute_units = 0;
   for (int i = 0; i < platformIdCount; i++)
   {
    printf("Platform Id: %d\n", i);
-   clGetDeviceIDs(platformIds[i], CL_DEVICE_TYPE_ALL, deviceIdCount[i], deviceIds.data(), nullptr);
+   clGetDeviceIDs(platformIds[i], CL_DEVICE_TYPE_GPU, deviceIdCount[i], deviceIds.data(), nullptr);
    for (int j = 0; j < deviceIdCount[i]; j++)
    {
     clGetDeviceInfo(deviceIds.data()[j], CL_DEVICE_NAME, sizeof(buffer), buffer, nullptr);
@@ -61,20 +61,19 @@ int main()
   }
 
   //user_inputs
-  cl_device_id device;
-  int device_id, platform_id;
+  int device_id = 0, platform_id = 0;
   printf("\nSelect platform: ");
   scanf("%d", &platform_id);
   printf("Select device: ");
   scanf("%d", &device_id);
-  clGetDeviceIDs(platformIds[platform_id], CL_DEVICE_TYPE_ALL, deviceIdCount[platform_id], deviceIds.data(), nullptr);
+  clGetDeviceIDs(platformIds[platform_id], CL_DEVICE_TYPE_GPU, deviceIdCount[platform_id], deviceIds.data(), nullptr);
 
   //lets_go
   const cl_context_properties contextProperties[] = { CL_CONTEXT_PLATFORM, reinterpret_cast<cl_context_properties> (platformIds[platform_id]),  0, 0 };
   cl_int error = CL_SUCCESS;
 
   cl_context context = clCreateContext(contextProperties, deviceIdCount[platform_id], &deviceIds[device_id], nullptr, nullptr, &error);
-
+ 
   Image imgL;
   lodepng::decode(imgL.pixel, imgL.width, imgL.height, "sukub/imP.png");
   Image imgR;
@@ -92,7 +91,6 @@ int main()
   std::size_t region[3] = { result.width / 2, result.height / 2, 1 };
   //DECIMATION
   // Create a program from source
-  auto start = std::chrono::high_resolution_clock::now();
   cl_program program = CreateProgram(LoadKernel("kernels/decimate.cl"), context);
   clBuildProgram(program, deviceIdCount[platform_id], &deviceIds[device_id], nullptr, nullptr, nullptr);
   cl_kernel kernel = clCreateKernel(program, "Decimate", &error);
@@ -100,24 +98,35 @@ int main()
   //Now our result is new result
   result.width /= 2;
   result.height /= 2;
-  // result.pixel.clear();
+  //result.pixel.clear();
   cl_mem outputImage = clCreateImage2D(context, CL_MEM_WRITE_ONLY, &format, result.width, result.height, 0, nullptr, &error);
   clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputImage);
   clSetKernelArg(kernel, 1, sizeof(cl_mem), &outputImage);
-  cl_command_queue queue = clCreateCommandQueue(context, deviceIds[device_id], 0, &error);
+  //queue with profiling
+  cl_command_queue queue = clCreateCommandQueue(context, deviceIds[device_id], CL_QUEUE_PROFILING_ENABLE, &error);
+  //ensure to have executed all queued tasks
+  clFinish(queue);
   std::size_t local_group_size[2] = { 16, 16 };
-  clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, size, local_group_size, 0, nullptr, nullptr);
-  clEnqueueReadImage(queue, outputImage, CL_TRUE, origin, region, 0, 0, result.pixel.data(), 0, nullptr, nullptr);
-  auto elapsed = std::chrono::high_resolution_clock::now() - start;
-  lodepng::encode("sukub/decimated_depth.png", result.pixel, result.width, result.height);
-  clReleaseMemObject(outputImage);
+  cl_event event;
+  clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, size, local_group_size, 0, nullptr, &event);
+  clWaitForEvents(1, &event);
+  clFinish(queue);
+  clEnqueueReadImage(queue, outputImage, CL_TRUE, origin, region, 0, 0, result.pixel.data(), 0, nullptr,nullptr);
+  clFinish(queue);
   clReleaseMemObject(inputImage);
   clReleaseCommandQueue(queue);
   clReleaseKernel(kernel);
   clReleaseProgram(program);
   clReleaseContext(context);
-  long microseconds = std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
-  printf("Execution time: %lu[us]\n--------------\n\n\n", microseconds);
+  lodepng::encode("sukub/decimated_depth.png", result.pixel, result.width, result.height);
+  //Get the Profiling data
+  cl_ulong time_start, time_end;
+  double total_time;
+
+  clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, nullptr);
+  clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, nullptr);
+  total_time = time_end - time_start;
+  printf("\nExecution time in milliseconds = %0.3f ms\n", (total_time / 1000000.0));
   printf("Again?...(y/n)  ");
   char y_or_n = 'n';  
   scanf(" %c", &y_or_n);
