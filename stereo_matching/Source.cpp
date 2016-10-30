@@ -84,21 +84,17 @@ int main()
   Image result = imgL;
   std::size_t offset[3] = { 0 };
   //global work size
-  std::size_t size[3] = { result.width / 2, result.height / 2, 1 };
+  std::size_t size[3] = { result.width, result.height, 1 };
   //defines offset, where should we read, z-buffer i zero for 2Ds
   std::size_t origin[3] = { 0,0,0 };
   //whats the size of rect we gonna read
-  std::size_t region[3] = { result.width / 2, result.height / 2, 1 };
+  std::size_t region[3] = { result.width, result.height, 1 };
   //DECIMATION
   // Create a program from source
-  cl_program program = CreateProgram(LoadKernel("kernels/decimate.cl"), context);
+  cl_program program = CreateProgram(LoadKernel("kernels/median.cl"), context);
   clBuildProgram(program, deviceIdCount[platform_id], &deviceIds[device_id], nullptr, nullptr, nullptr);
   cl_kernel kernel = clCreateKernel(program, "Decimate", &error);
   cl_mem inputImage = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result.width, result.height, 0, const_cast<unsigned char*> (result.pixel.data()), &error);
-  //Now our result is new result
-  result.width /= 2;
-  result.height /= 2;
-  //result.pixel.clear();
   cl_mem outputImage = clCreateImage2D(context, CL_MEM_WRITE_ONLY, &format, result.width, result.height, 0, nullptr, &error);
   clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputImage);
   clSetKernelArg(kernel, 1, sizeof(cl_mem), &outputImage);
