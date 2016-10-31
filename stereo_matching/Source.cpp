@@ -81,23 +81,28 @@ int main()
 
   //variables
   static const cl_image_format format = { CL_RGBA, CL_UNORM_INT8 };
-  Image result = imgL;
+  Image result[2] = { imgL, imgR };
   std::size_t offset[3] = { 0 };
   //global work size
-  std::size_t size[3] = { result.width, result.height, 1 };
+  std::size_t size[3] = { result[0].width, result[0].height, 1 };
   //defines offset, where should we read, z-buffer i zero for 2Ds
   std::size_t origin[3] = { 0,0,0 };
   //whats the size of rect we gonna read
-  std::size_t region[3] = { result.width, result.height, 1 };
+  std::size_t region[3] = { result[0].width, result[0].height, 1 };
+
   //DECIMATION
   // Create a program from source
   cl_program program = CreateProgram(LoadKernel("kernels/median.cl"), context);
   clBuildProgram(program, deviceIdCount[platform_id], &deviceIds[device_id], nullptr, nullptr, nullptr);
   cl_kernel kernel = clCreateKernel(program, "Decimate", &error);
-  cl_mem inputImage = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result.width, result.height, 0, const_cast<unsigned char*> (result.pixel.data()), &error);
-  cl_mem outputImage = clCreateImage2D(context, CL_MEM_WRITE_ONLY, &format, result.width, result.height, 0, nullptr, &error);
-  clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputImage);
-  clSetKernelArg(kernel, 1, sizeof(cl_mem), &outputImage);
+  cl_mem inputImage_l = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[0].width, result[0].height, 0, const_cast<unsigned char*> (result[0].pixel.data()), &error);
+  cl_mem inputImage_r = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[1].width, result[1].height, 0, const_cast<unsigned char*> (result[1].pixel.data()), &error);
+  cl_mem outputImage_l = clCreateImage2D(context, CL_MEM_WRITE_ONLY, &format, result[0].width, result[0].height, 0, nullptr, &error);
+  cl_mem outputImage_r = clCreateImage2D(context, CL_MEM_WRITE_ONLY, &format, result[1].width, result[1].height, 0, nullptr, &error);
+  clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputImage_l);
+  clSetKernelArg(kernel, 1, sizeof(cl_mem), &inputImage_r);
+  clSetKernelArg(kernel, 2, sizeof(cl_mem), &outputImage_l);
+  clSetKernelArg(kernel, 3, sizeof(cl_mem), &outputImage_r);
   //queue with profiling
   cl_command_queue queue = clCreateCommandQueue(context, deviceIds[device_id], CL_QUEUE_PROFILING_ENABLE, &error);
   //ensure to have executed all queued tasks
@@ -107,14 +112,19 @@ int main()
   clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, size, local_group_size, 0, nullptr, &event);
   clWaitForEvents(1, &event);
   clFinish(queue);
-  clEnqueueReadImage(queue, outputImage, CL_TRUE, origin, region, 0, 0, result.pixel.data(), 0, nullptr,nullptr);
+  clEnqueueReadImage(queue, outputImage_l, CL_TRUE, origin, region, 0, 0, result[0].pixel.data(), 0, nullptr,nullptr);
+  clEnqueueReadImage(queue, outputImage_r, CL_TRUE, origin, region, 0, 0, result[1].pixel.data(), 0, nullptr, nullptr);
   clFinish(queue);
-  clReleaseMemObject(inputImage);
+  clReleaseMemObject(inputImage_l);
+  clReleaseMemObject(inputImage_r);
+  clReleaseMemObject(outputImage_l);
+  clReleaseMemObject(outputImage_r);
   clReleaseCommandQueue(queue);
   clReleaseKernel(kernel);
   clReleaseProgram(program);
   clReleaseContext(context);
-  lodepng::encode("sukub/decimated_depth.png", result.pixel, result.width, result.height);
+  lodepng::encode("sukub/decimated_depth_L.png", result[0].pixel, result[0].width, result[0].height);
+  lodepng::encode("sukub/decimated_depth_R.png", result[1].pixel, result[1].width, result[1].height);
   //Get the Profiling data
   cl_ulong time_start, time_end;
   double total_time;
