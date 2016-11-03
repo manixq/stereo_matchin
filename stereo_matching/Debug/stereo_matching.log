@@ -2,5 +2,7 @@
 c:\users\mike\desktop\opencl\stereo_matchin\stereo_matching\source.cpp(40): warning C4018: '<': signed/unsigned mismatch
 c:\users\mike\desktop\opencl\stereo_matchin\stereo_matching\source.cpp(49): warning C4018: '<': signed/unsigned mismatch
 c:\users\mike\desktop\opencl\stereo_matchin\stereo_matching\source.cpp(53): warning C4018: '<': signed/unsigned mismatch
-c:\users\mike\desktop\opencl\stereo_matchin\stereo_matching\source.cpp(177): warning C4244: '=': conversion from 'cl_ulong' to 'double', possible loss of data
+c:\users\mike\desktop\opencl\stereo_matchin\stereo_matching\source.cpp(91): warning C4838: conversion from 'double' to 'size_t' requires a narrowing conversion
+c:\users\mike\desktop\opencl\stereo_matchin\stereo_matching\source.cpp(91): warning C4244: 'initializing': conversion from 'double' to 'size_t', possible loss of data
+c:\users\mike\desktop\opencl\stereo_matchin\stereo_matching\source.cpp(179): warning C4244: '=': conversion from 'cl_ulong' to 'double', possible loss of data
   stereo_matching.vcxproj -> C:\Users\Mike\Desktop\OpenCL\stereo_matchin\Debug\stereo_matching.exe

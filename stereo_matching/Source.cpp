@@ -87,9 +87,11 @@ int main()
   //variables
   static const cl_image_format format = { CL_RGBA, CL_UNORM_INT8 };
   Image result[2] = { imgL, imgR };
-  std::size_t offset[3] = { 0 };
+  std::size_t local[3] = { 3, 3, 1 };
+  size_t numLocalGroups[] = { ceil(result[0].width / local[0]), ceil(result[0].height / local[1]) };
   //global work size
   std::size_t size[3] = { result[0].width, result[0].height, 1 };
+  size_t globalSize[] = { local[0] * numLocalGroups[0], local[1] * numLocalGroups[1] };
   //defines offset, where should we read, z-buffer i zero for 2Ds
   std::size_t origin[3] = { 0,0,0 };
   //whats the size of rect we gonna read
@@ -99,73 +101,73 @@ int main()
   // Create a program from source
   cl_program program = CreateProgram(LoadKernel("kernels/median.cl"), context);
   clBuildProgram(program, 1, &deviceIds.data()[device_id], nullptr, nullptr, nullptr);
-  cl_kernel kernel = clCreateKernel(program, "Decimate", &error);
+  cl_kernel kernel = clCreateKernel(program, "Median", &error);
   cl_mem inputImage_l = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[0].width, result[0].height, 0, const_cast<unsigned char*> (result[0].pixel.data()), &error);
-  cl_mem inputImage_r = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[1].width, result[1].height, 0, const_cast<unsigned char*> (result[1].pixel.data()), &error);
   cl_mem outputImage_l = clCreateImage2D(context, CL_MEM_WRITE_ONLY, &format, result[0].width, result[0].height, 0, nullptr, &error);
-  cl_mem outputImage_r = clCreateImage2D(context, CL_MEM_WRITE_ONLY, &format, result[1].width, result[1].height, 0, nullptr, &error);
   clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputImage_l);
-  clSetKernelArg(kernel, 1, sizeof(cl_mem), &inputImage_r);
-  clSetKernelArg(kernel, 2, sizeof(cl_mem), &outputImage_l);
-  clSetKernelArg(kernel, 3, sizeof(cl_mem), &outputImage_r);
+  clSetKernelArg(kernel, 1, sizeof(cl_mem), &outputImage_l);
   //queue with profiling
   cl_command_queue queue = clCreateCommandQueue(context, deviceIds.data()[device_id], CL_QUEUE_PROFILING_ENABLE, &error);
   //ensure to have executed all queued tasks
   clFinish(queue);
   cl_event event_median;
-  clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, size, nullptr, 0, nullptr, &event_median);
+  clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, globalSize, local , 0, nullptr, &event_median);
   clWaitForEvents(1, &event_median);
   clFinish(queue);
   clEnqueueReadImage(queue, outputImage_l, CL_TRUE, origin, region, 0, 0, result[0].pixel.data(), 0, nullptr,nullptr);
+  clFinish(queue);
+
+  clReleaseMemObject(inputImage_l);
+  clReleaseMemObject(outputImage_l);
+  lodepng::encode("sukub/median_L.png", result[0].pixel, result[0].width, result[0].height);
+
+  //second image
+  cl_mem inputImage_r = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[1].width, result[1].height, 0, const_cast<unsigned char*> (result[1].pixel.data()), &error);
+  cl_mem outputImage_r = clCreateImage2D(context, CL_MEM_WRITE_ONLY, &format, result[1].width, result[1].height, 0, nullptr, &error);
+  clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputImage_r);
+  clSetKernelArg(kernel, 1, sizeof(cl_mem), &outputImage_r);
+  //queue with profiling
+  //queue = clCreateCommandQueue(context, deviceIds.data()[device_id], CL_QUEUE_PROFILING_ENABLE, &error);
+  //ensure to have executed all queued tasks
+  clFinish(queue);
+  clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, globalSize, local, 0, nullptr, &event_median);
+  clWaitForEvents(1, &event_median);
+  clFinish(queue);
   clEnqueueReadImage(queue, outputImage_r, CL_TRUE, origin, region, 0, 0, result[1].pixel.data(), 0, nullptr, nullptr);
   clFinish(queue);
 
-  clReleaseMemObject(inputImage_l);
   clReleaseMemObject(inputImage_r);
-  clReleaseMemObject(outputImage_l);
   clReleaseMemObject(outputImage_r);
-  clReleaseCommandQueue(queue);
   clReleaseKernel(kernel);
   clReleaseProgram(program);
-  lodepng::encode("sukub/decimated_depth_L.png", result[0].pixel, result[0].width, result[0].height);
-  lodepng::encode("sukub/decimated_depth_R.png", result[1].pixel, result[1].width, result[1].height);
-
+  lodepng::encode("sukub/median_R.png", result[1].pixel, result[1].width, result[1].height);
   //Cross construction
   //width, height x 4 dimension for every pixel: H-, H+, V-, V+
-  std::size_t cross_size[3] = { result[0].width, result[0].height, 4 };
+  std::size_t cross_size[3] = { result[0].width, result[0].height, 2 };
 
   program = CreateProgram(LoadKernel("kernels/cross.cl"), context);
   clBuildProgram(program, 1, &deviceIds.data()[device_id], nullptr, nullptr, nullptr);
-  kernel = clCreateKernel(program, "Decimate", &error);
+  kernel = clCreateKernel(program, "Cross", &error);
   inputImage_l = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[0].width, result[0].height, 0, const_cast<unsigned char*> (result[0].pixel.data()), &error);
-  inputImage_r = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[1].width, result[1].height, 0, const_cast<unsigned char*> (result[1].pixel.data()), &error);
-  cl_mem outputCross_l = clCreateImage3D(context, CL_MEM_WRITE_ONLY, &format, result[0].width, result[0].height, 4, 0, 0, nullptr, &error);
-  cl_mem outputCross_r = clCreateImage3D(context, CL_MEM_WRITE_ONLY, &format, result[1].width, result[1].height, 4, 0, 0, nullptr, &error);
+  cl_mem outputCross_l = clCreateImage3D(context, CL_MEM_WRITE_ONLY, &format, result[0].width, result[0].height, 2, 0, 0, nullptr, &error);
   clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputImage_l);
-  clSetKernelArg(kernel, 1, sizeof(cl_mem), &inputImage_r);
-  clSetKernelArg(kernel, 2, sizeof(cl_mem), &outputCross_l);
-  clSetKernelArg(kernel, 3, sizeof(cl_mem), &outputCross_r);
-  //queue with profiling
-  // queue = clCreateCommandQueue(context, deviceIds.data()[device_id], CL_QUEUE_PROFILING_ENABLE, &error);
-  //ensure to have executed all queued tasks
+  clSetKernelArg(kernel, 1, sizeof(cl_mem), &outputCross_l);
   clFinish(queue);
   cl_event event_cross;
-  clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, size, nullptr, 0, nullptr, &event_cross);
+  clEnqueueNDRangeKernel(queue, kernel, 3, nullptr, cross_size, nullptr, 0, nullptr, &event_cross);
   clWaitForEvents(1, &event_cross);
   clFinish(queue);
-  std::vector<std::vector<std::vector<size_t> > > cross_result(cross_size[0], std::vector<std::vector<size_t> >(cross_size[1], std::vector <size_t>(cross_size[2])));
-  clEnqueueReadImage(queue, outputCross_l, CL_TRUE, origin, region, 0, 0, result[0].pixel.data(), 0, nullptr, nullptr);
-  clEnqueueReadImage(queue, outputCross_r, CL_TRUE, origin, region, 0, 0, result[1].pixel.data(), 0, nullptr, nullptr);
+
+  clEnqueueReadImage(queue, outputCross_l, CL_TRUE, origin, region, 0, 0, result[1].pixel.data(), 0, nullptr, nullptr);
   clFinish(queue);
+
+  lodepng::encode("sukub/cross_L.png", result[0].pixel, result[0].width, result[0].height);
   clReleaseMemObject(inputImage_l);
-  clReleaseMemObject(inputImage_r);
   clReleaseMemObject(outputCross_l);
-  clReleaseMemObject(outputCross_r);
   clReleaseCommandQueue(queue);
   clReleaseKernel(kernel);
   clReleaseProgram(program);
 
-  printf("%zu\n", cross_result.data()[0][0][0]);
 
 
 

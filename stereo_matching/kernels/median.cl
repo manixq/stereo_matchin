@@ -19,11 +19,9 @@ void sort(float4 *x, float4 *y, float4 *z)
  *x = temp;
 }
 
-__kernel void Decimate (
-	__read_only image2d_t input_l,
- __read_only image2d_t input_r,
-	__write_only image2d_t output_l,
- __write_only image2d_t output_r
+__kernel void Median (
+	__read_only image2d_t input,
+ __write_only image2d_t output
  )
 {
      //actual(THIS) position of kernel
@@ -35,15 +33,15 @@ __kernel void Decimate (
      s6, s7, s8
      */
      float4 s[9];
-     s[0] = read_imagef(input_l, sampler, pos + (int2)(-1, -1));
-     s[1] = read_imagef(input_l, sampler, pos + (int2)(0, -1));
-     s[2] = read_imagef(input_l, sampler, pos + (int2)(1, -1));
-     s[3] = read_imagef(input_l, sampler, pos + (int2)(-1, 0));
-     s[4] = read_imagef(input_l, sampler, pos + (int2)(0, 0));
-     s[5] = read_imagef(input_l, sampler, pos + (int2)(1, 0));
-     s[6] = read_imagef(input_l, sampler, pos + (int2)(-1, 1));
-     s[7] = read_imagef(input_l, sampler, pos + (int2)(0, 1));
-     s[8] = read_imagef(input_l, sampler, pos + (int2)(1, 1));
+     s[0] = read_imagef(input, sampler, pos + (int2)(-1, -1));
+     s[1] = read_imagef(input, sampler, pos + (int2)(0, -1));
+     s[2] = read_imagef(input, sampler, pos + (int2)(1, -1));
+     s[3] = read_imagef(input, sampler, pos + (int2)(-1, 0));
+     s[4] = read_imagef(input, sampler, pos + (int2)(0, 0));
+     s[5] = read_imagef(input, sampler, pos + (int2)(1, 0));
+     s[6] = read_imagef(input, sampler, pos + (int2)(-1, 1));
+     s[7] = read_imagef(input, sampler, pos + (int2)(0, 1));
+     s[8] = read_imagef(input, sampler, pos + (int2)(1, 1));
      //rows
      sort(&s[0], &s[1], &s[2]);
      sort(&s[3], &s[4], &s[5]);
@@ -56,27 +54,5 @@ __kernel void Decimate (
      sort(&s[0], &s[4], &s[8]);
      //result
      med = s[4];
-     write_imagef(output_l, (int2)(pos.x, pos.y), med);
-     s[0] = read_imagef(input_r, sampler, pos + (int2)(-1, -1));
-     s[1] = read_imagef(input_r, sampler, pos + (int2)(0, -1));
-     s[2] = read_imagef(input_r, sampler, pos + (int2)(1, -1));
-     s[3] = read_imagef(input_r, sampler, pos + (int2)(-1, 0));
-     s[4] = read_imagef(input_r, sampler, pos + (int2)(0, 0));
-     s[5] = read_imagef(input_r, sampler, pos + (int2)(1, 0));
-     s[6] = read_imagef(input_r, sampler, pos + (int2)(-1, 1));
-     s[7] = read_imagef(input_r, sampler, pos + (int2)(0, 1));
-     s[8] = read_imagef(input_r, sampler, pos + (int2)(1, 1));
-     //rows
-     sort(&s[0], &s[1], &s[2]);
-     sort(&s[3], &s[4], &s[5]);
-     sort(&s[6], &s[7], &s[8]);
-     //columns
-     sort(&s[0], &s[3], &s[6]);
-     sort(&s[1], &s[4], &s[7]);
-     sort(&s[2], &s[5], &s[8]);
-     //diagonal
-     sort(&s[0], &s[4], &s[8]);
-     //result
-     med = s[4];
-     write_imagef(output_r, (int2)(pos.x, pos.y), med);
+     write_imagef(output, (int2)(pos.x, pos.y), med);
 }
