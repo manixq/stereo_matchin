@@ -23,7 +23,10 @@ cl_program CreateProgram(const std::string& source, cl_context context)
  cl_program program = clCreateProgramWithSource(context, 1, &sources, &lengths,nullptr);
  return program;
 }
-
+void ErCheck(cl_int error) {
+ if (error != CL_SUCCESS)
+  printf("OpenCL error executing kernel: %d\n", error);
+}
 int main()
 {
 
@@ -141,27 +144,28 @@ int main()
   clReleaseKernel(kernel);
   clReleaseProgram(program);
   lodepng::encode("sukub/median_R.png", result[1].pixel, result[1].width, result[1].height);
+
   //Cross construction
   //width, height x 4 dimension for every pixel: H-, H+, V-, V+
-  std::size_t cross_size[3] = { result[0].width, result[0].height, 2 };
-
+  std::size_t cross_size[3] = { result[0].width, result[0].height, 1 };
   program = CreateProgram(LoadKernel("kernels/cross.cl"), context);
   clBuildProgram(program, 1, &deviceIds.data()[device_id], nullptr, nullptr, nullptr);
   kernel = clCreateKernel(program, "Cross", &error);
   inputImage_l = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[0].width, result[0].height, 0, const_cast<unsigned char*> (result[0].pixel.data()), &error);
-  cl_mem outputCross_l = clCreateImage3D(context, CL_MEM_WRITE_ONLY, &format, result[0].width, result[0].height, 2, 0, 0, nullptr, &error);
+  cl_mem outputCross_l = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(int) * result[0].width * result[0].height * 4, nullptr, &error);
   clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputImage_l);
   clSetKernelArg(kernel, 1, sizeof(cl_mem), &outputCross_l);
   clFinish(queue);
   cl_event event_cross;
-  clEnqueueNDRangeKernel(queue, kernel, 3, nullptr, cross_size, nullptr, 0, nullptr, &event_cross);
+  ErCheck(clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, cross_size, nullptr, 0, nullptr, &event_cross));
   clWaitForEvents(1, &event_cross);
   clFinish(queue);
+  auto *cross_l = static_cast<int*>(malloc(sizeof(int) * result[0].width * result[0].height * 4));
+  clEnqueueReadBuffer(queue, outputCross_l, CL_TRUE, 0, sizeof(int) * result[0].width * result[0].height * 4, cross_l, 0, nullptr, nullptr);
 
-  clEnqueueReadImage(queue, outputCross_l, CL_TRUE, origin, region, 0, 0, result[1].pixel.data(), 0, nullptr, nullptr);
   clFinish(queue);
-
   lodepng::encode("sukub/cross_L.png", result[0].pixel, result[0].width, result[0].height);
+
   clReleaseMemObject(inputImage_l);
   clReleaseMemObject(outputCross_l);
   clReleaseCommandQueue(queue);
