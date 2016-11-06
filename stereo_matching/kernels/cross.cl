@@ -6,17 +6,16 @@ __constant sampler_t sampler =
 int check_similarity(image2d_t input, int2 pos, int old_one, int current_one, float4 color_data)
 {
  float4 neighbour_data = read_imagef(input, sampler, pos);
-
- uint color_similarity_r = abs_diff((int)(color_data.x), (int)(neighbour_data.x));
- uint color_similarity_g = abs_diff((int)(color_data.y), (int)(neighbour_data.y));
- uint color_similarity_b = abs_diff((int)(color_data.z), (int)(neighbour_data.z));
-
- int check_r = select(0, 1, islessequal(color_similarity_r, 5));
- int check_g = select(0, 1, islessequal(color_similarity_g, 5));
- int check_b = select(0, 1, islessequal(color_similarity_b, 5));
+ int color_similarity_r = abs_diff((int)(100*color_data.x), (int)(100*neighbour_data.x));
+ int color_similarity_g = abs_diff((int)(100*color_data.y), (int)(100*neighbour_data.y));
+ int color_similarity_b = abs_diff((int)(100 * color_data.z), (int)(100 * neighbour_data.z));
+ 
+ int check_r = select(0, 1, islessequal((float)(color_similarity_r), 15.0f));
+ int check_g = select(0, 1, islessequal((float)(color_similarity_g), 15.0f));
+ int check_b = select(0, 1, islessequal((float)(color_similarity_b), 15.0f));
  //if 1 then fail
- int flag = select(0, 1,isgreater(current_one - old_one, 1));
- current_one = select(old_one, current_one, isequal(3, check_r + check_b + check_g));
+ int flag = select(0, 1,isgreater((float)(current_one - old_one), 1.0f));
+ current_one = select(old_one, current_one, isequal(3.0f, (float)(check_r + check_b + check_g)));
  return select(current_one, old_one, flag);
 }
 
@@ -88,12 +87,14 @@ __kernel void Cross (
     int v_minus = 1;
     int v_plus = 1;
 
-    //start searchin H-
-    h_minus = check_all(input, pos,(int2)(-1, 0));
+    //start searchin H-, H+, V-, V+
+    /*
+    h_minus = check_all(input, pos, (int2)(-1, 0));
     h_plus = check_all(input, pos, (int2)( 1, 0));
-    
+    v_minus = check_all(input, pos, (int2)(0, -1));
+    v_plus = check_all(input, pos, (int2)(0, 1));*/
     output[pos.x + dim.x * pos.y] = h_minus;
-    output[pos.x + dim.x * pos.y + dim.x*dim.y * 1] = 2;
-    output[pos.x + dim.x * pos.y + dim.x*dim.y * 2] = 3;
-    output[pos.x + dim.x * pos.y + dim.x*dim.y * 3] = 4;
+    output[pos.x + dim.x * pos.y + dim.x*dim.y * 1] = h_plus;
+    output[pos.x + dim.x * pos.y + dim.x*dim.y * 2] = v_minus;
+    output[pos.x + dim.x * pos.y + dim.x*dim.y * 3] = v_plus;
 }

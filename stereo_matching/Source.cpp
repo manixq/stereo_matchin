@@ -89,7 +89,7 @@ int main()
 
   //variables
   static const cl_image_format format = { CL_RGBA, CL_UNORM_INT8 };
-  Image result[2] = { imgL, imgR };
+  Image result[3] = { imgL, imgR, imgL };
   std::size_t local[3] = { 3, 3, 1 };
   size_t numLocalGroups[] = { ceil(result[0].width / local[0]), ceil(result[0].height / local[1]) };
   //global work size
@@ -119,7 +119,6 @@ int main()
   clFinish(queue);
   clEnqueueReadImage(queue, outputImage_l, CL_TRUE, origin, region, 0, 0, result[0].pixel.data(), 0, nullptr,nullptr);
   clFinish(queue);
-
   clReleaseMemObject(inputImage_l);
   clReleaseMemObject(outputImage_l);
   lodepng::encode("sukub/median_L.png", result[0].pixel, result[0].width, result[0].height);
@@ -147,6 +146,7 @@ int main()
 
   //Cross construction
   //width, height x 4 dimension for every pixel: H-, H+, V-, V+
+  //left image cross
   std::size_t cross_size[3] = { result[0].width, result[0].height, 1 };
   program = CreateProgram(LoadKernel("kernels/cross.cl"), context);
   clBuildProgram(program, 1, &deviceIds.data()[device_id], nullptr, nullptr, nullptr);
@@ -162,18 +162,57 @@ int main()
   clFinish(queue);
   auto *cross_l = static_cast<int*>(malloc(sizeof(int) * result[0].width * result[0].height * 4));
   clEnqueueReadBuffer(queue, outputCross_l, CL_TRUE, 0, sizeof(int) * result[0].width * result[0].height * 4, cross_l, 0, nullptr, nullptr);
-
   clFinish(queue);
-  lodepng::encode("sukub/cross_L.png", result[0].pixel, result[0].width, result[0].height);
-
   clReleaseMemObject(inputImage_l);
   clReleaseMemObject(outputCross_l);
-  clReleaseCommandQueue(queue);
+  //right image cross
+  inputImage_r = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[1].width, result[1].height, 0, const_cast<unsigned char*> (result[1].pixel.data()), &error);
+  cl_mem outputCross_r = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(int) * result[1].width * result[1].height * 4, nullptr, &error);
+  clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputImage_r);
+  clSetKernelArg(kernel, 1, sizeof(cl_mem), &outputCross_r);
+  clFinish(queue);
+  cl_event event_cross_r;
+  ErCheck(clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, cross_size, nullptr, 0, nullptr, &event_cross_r));
+  clWaitForEvents(1, &event_cross_r);
+  clFinish(queue);
+  auto *cross_r = static_cast<int*>(malloc(sizeof(int) * result[1].width * result[1].height * 4));
+  clEnqueueReadBuffer(queue, outputCross_r, CL_TRUE, 0, sizeof(int) * result[1].width * result[1].height * 4, cross_r, 0, nullptr, nullptr);
+  clFinish(queue);
+  clReleaseMemObject(inputImage_r);
+  clReleaseMemObject(outputCross_r);
   clReleaseKernel(kernel);
   clReleaseProgram(program);
 
-
-
+  //aggregation cost
+  program = CreateProgram(LoadKernel("kernels/aggregation.cl"), context);
+  clBuildProgram(program, 1, &deviceIds.data()[device_id], nullptr, nullptr, nullptr);
+  kernel = clCreateKernel(program, "Aggregation", &error);
+  inputImage_l = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[0].width, result[0].height, 0, const_cast<unsigned char*> (result[0].pixel.data()), &error);
+  inputImage_r = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[1].width, result[1].height, 0, const_cast<unsigned char*> (result[1].pixel.data()), &error);
+  cl_mem inputCross_l = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int) * result[0].width * result[0].height * 4, cross_l, &error);
+  cl_mem inputCross_r = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int) * result[1].width * result[1].height * 4, cross_r, &error);
+  cl_mem disparity = clCreateImage2D(context, CL_MEM_WRITE_ONLY, &format, result[2].width, result[2].height, 0, nullptr, &error);
+  clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputImage_l);
+  clSetKernelArg(kernel, 1, sizeof(cl_mem), &inputImage_r);
+  clSetKernelArg(kernel, 2, sizeof(cl_mem), &inputCross_l);
+  clSetKernelArg(kernel, 3, sizeof(cl_mem), &inputCross_r);
+  clSetKernelArg(kernel, 4, sizeof(cl_mem), &disparity);
+  clFinish(queue);
+  cl_event event_disp;
+  ErCheck(clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, size, nullptr, 0, nullptr, &event_disp));
+  clWaitForEvents(1, &event_disp);
+  clFinish(queue);
+  clEnqueueReadImage(queue, disparity, CL_TRUE, origin, region, 0, 0, result[2].pixel.data(), 0, nullptr, nullptr);
+  clFinish(queue);
+  clReleaseMemObject(inputImage_l);
+  clReleaseMemObject(inputImage_r);
+  clReleaseMemObject(inputCross_l);
+  clReleaseMemObject(inputCross_r);
+  clReleaseMemObject(disparity);
+  clReleaseCommandQueue(queue);
+  clReleaseKernel(kernel);
+  clReleaseProgram(program);
+  lodepng::encode("sukub/disparity.png", result[2].pixel, result[2].width, result[2].height);
 
   //Get measured time data
   cl_ulong time_start, time_end;
