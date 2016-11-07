@@ -10,9 +10,9 @@ int check_similarity(image2d_t input, int2 pos, int old_one, int current_one, fl
  int color_similarity_g = abs_diff((int)(100*color_data.y), (int)(100*neighbour_data.y));
  int color_similarity_b = abs_diff((int)(100 * color_data.z), (int)(100 * neighbour_data.z));
  
- int check_r = select(0, 1, islessequal((float)(color_similarity_r), 15.0f));
- int check_g = select(0, 1, islessequal((float)(color_similarity_g), 15.0f));
- int check_b = select(0, 1, islessequal((float)(color_similarity_b), 15.0f));
+ int check_r = select(0, 1, islessequal((float)(color_similarity_r), 20.0f));
+ int check_g = select(0, 1, islessequal((float)(color_similarity_g), 20.0f));
+ int check_b = select(0, 1, islessequal((float)(color_similarity_b), 20.0f));
  //if 1 then fail
  int flag = select(0, 1,isgreater((float)(current_one - old_one), 1.0f));
  current_one = select(old_one, current_one, isequal(3.0f, (float)(check_r + check_b + check_g)));
