@@ -1,18 +1,19 @@
 __constant sampler_t sampler =
   CLK_NORMALIZED_COORDS_FALSE
-| CLK_ADDRESS_MIRRORED_REPEAT
+| CLK_ADDRESS_CLAMP_TO_EDGE
 | CLK_FILTER_NEAREST;
 
 int check_similarity(image2d_t input, int2 pos, int old_one, int current_one, float4 color_data)
 {
  float4 neighbour_data = read_imagef(input, sampler, pos);
- int color_similarity_r = abs_diff((int)(100*color_data.x), (int)(100*neighbour_data.x));
- int color_similarity_g = abs_diff((int)(100*color_data.y), (int)(100*neighbour_data.y));
- int color_similarity_b = abs_diff((int)(100 * color_data.z), (int)(100 * neighbour_data.z));
+ int color_similarity_r = abs_diff((int)(10000 * color_data.x), (int)(10000 * neighbour_data.x));
+ int color_similarity_g = abs_diff((int)(10000 * color_data.y), (int)(10000 * neighbour_data.y));
+ int color_similarity_b = abs_diff((int)(10000 * color_data.z), (int)(10000 * neighbour_data.z));
  
- int check_r = select(0, 1, islessequal((float)(color_similarity_r), 20.0f));
- int check_g = select(0, 1, islessequal((float)(color_similarity_g), 20.0f));
- int check_b = select(0, 1, islessequal((float)(color_similarity_b), 20.0f));
+ //10% error - and let it go
+ int check_r = select(0, 1, islessequal((float)(color_similarity_r)/100, 10.0f));
+ int check_g = select(0, 1, islessequal((float)(color_similarity_g)/100, 10.0f));
+ int check_b = select(0, 1, islessequal((float)(color_similarity_b)/100, 10.0f));
  //if 1 then fail
  int flag = select(0, 1,isgreater((float)(current_one - old_one), 1.0f));
  current_one = select(old_one, current_one, isequal(3.0f, (float)(check_r + check_b + check_g)));
@@ -88,13 +89,13 @@ __kernel void Cross (
     int v_plus = 1;
 
     //start searchin H-, H+, V-, V+
-    /*
+    
     h_minus = check_all(input, pos, (int2)(-1, 0));
     h_plus = check_all(input, pos, (int2)( 1, 0));
     v_minus = check_all(input, pos, (int2)(0, -1));
-    v_plus = check_all(input, pos, (int2)(0, 1));*/
-    output[pos.x + dim.x * pos.y] = h_minus;
+    v_plus = check_all(input, pos, (int2)(0, 1));
+    output[pos.x + dim.x * pos.y] = (-1)*h_minus;
     output[pos.x + dim.x * pos.y + dim.x*dim.y * 1] = h_plus;
-    output[pos.x + dim.x * pos.y + dim.x*dim.y * 2] = v_minus;
+    output[pos.x + dim.x * pos.y + dim.x*dim.y * 2] = (-1)*v_minus;
     output[pos.x + dim.x * pos.y + dim.x*dim.y * 3] = v_plus;
 }

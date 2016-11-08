@@ -52,5 +52,6 @@ __kernel void Median(
  //diagonal
  sort(&s[0], &s[4], &s[8]);
  //result
+ 
  write_imagef(output, (int2)(pos.x, pos.y), s[4]);
 }

@@ -111,16 +111,10 @@ int main()
   clSetKernelArg(kernel, 1, sizeof(cl_mem), &outputImage_l);
   //queue with profiling
   cl_command_queue queue = clCreateCommandQueue(context, deviceIds.data()[device_id], CL_QUEUE_PROFILING_ENABLE, &error);
-  //ensure to have executed all queued tasks
-  clFinish(queue);
-  cl_event event_median;
-  clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, globalSize, local , 0, nullptr, &event_median);
-  clWaitForEvents(1, &event_median);
-  clFinish(queue);
+  cl_event event_median_l;
+  clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, globalSize, local , 0, nullptr, &event_median_l);
+  clWaitForEvents(1, &event_median_l);
   clEnqueueReadImage(queue, outputImage_l, CL_TRUE, origin, region, 0, 0, result[0].pixel.data(), 0, nullptr,nullptr);
-  clFinish(queue);
-  clReleaseMemObject(inputImage_l);
-  clReleaseMemObject(outputImage_l);
   lodepng::encode("sukub/median_L.png", result[0].pixel, result[0].width, result[0].height);
 
   //second image
@@ -128,18 +122,10 @@ int main()
   cl_mem outputImage_r = clCreateImage2D(context, CL_MEM_WRITE_ONLY, &format, result[1].width, result[1].height, 0, nullptr, &error);
   clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputImage_r);
   clSetKernelArg(kernel, 1, sizeof(cl_mem), &outputImage_r);
-  //queue with profiling
-  //queue = clCreateCommandQueue(context, deviceIds.data()[device_id], CL_QUEUE_PROFILING_ENABLE, &error);
-  //ensure to have executed all queued tasks
-  clFinish(queue);
-  clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, globalSize, local, 0, nullptr, &event_median);
-  clWaitForEvents(1, &event_median);
-  clFinish(queue);
+  cl_event event_median_r;
+  clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, globalSize, local, 0, nullptr, &event_median_r);
+  clWaitForEvents(1, &event_median_r);
   clEnqueueReadImage(queue, outputImage_r, CL_TRUE, origin, region, 0, 0, result[1].pixel.data(), 0, nullptr, nullptr);
-  clFinish(queue);
-
-  clReleaseMemObject(inputImage_r);
-  clReleaseMemObject(outputImage_r);
   clReleaseKernel(kernel);
   clReleaseProgram(program);
   lodepng::encode("sukub/median_R.png", result[1].pixel, result[1].width, result[1].height);
@@ -151,34 +137,25 @@ int main()
   program = CreateProgram(LoadKernel("kernels/cross.cl"), context);
   clBuildProgram(program, 1, &deviceIds.data()[device_id], nullptr, nullptr, nullptr);
   kernel = clCreateKernel(program, "Cross", &error);
-  inputImage_l = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[0].width, result[0].height, 0, const_cast<unsigned char*> (result[0].pixel.data()), &error);
   cl_mem outputCross_l = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(int) * result[0].width * result[0].height * 4, nullptr, &error);
   clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputImage_l);
   clSetKernelArg(kernel, 1, sizeof(cl_mem), &outputCross_l);
-  clFinish(queue);
-  cl_event event_cross;
-  ErCheck(clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, cross_size, nullptr, 0, nullptr, &event_cross));
-  clWaitForEvents(1, &event_cross);
-  clFinish(queue);
+  cl_event event_cross_l;
+  ErCheck(clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, cross_size, nullptr, 0, nullptr, &event_cross_l));
+  clWaitForEvents(1, &event_cross_l);
   auto *cross_l = static_cast<int*>(malloc(sizeof(int) * result[0].width * result[0].height * 4));
   clEnqueueReadBuffer(queue, outputCross_l, CL_TRUE, 0, sizeof(int) * result[0].width * result[0].height * 4, cross_l, 0, nullptr, nullptr);
-  clFinish(queue);
-  clReleaseMemObject(inputImage_l);
-  clReleaseMemObject(outputCross_l);
-  //right image cross
-  inputImage_r = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[1].width, result[1].height, 0, const_cast<unsigned char*> (result[1].pixel.data()), &error);
+  //right image 
   cl_mem outputCross_r = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(int) * result[1].width * result[1].height * 4, nullptr, &error);
   clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputImage_r);
   clSetKernelArg(kernel, 1, sizeof(cl_mem), &outputCross_r);
-  clFinish(queue);
   cl_event event_cross_r;
   ErCheck(clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, cross_size, nullptr, 0, nullptr, &event_cross_r));
   clWaitForEvents(1, &event_cross_r);
-  clFinish(queue);
   auto *cross_r = static_cast<int*>(malloc(sizeof(int) * result[1].width * result[1].height * 4));
   clEnqueueReadBuffer(queue, outputCross_r, CL_TRUE, 0, sizeof(int) * result[1].width * result[1].height * 4, cross_r, 0, nullptr, nullptr);
   clFinish(queue);
-  clReleaseMemObject(inputImage_r);
+  clReleaseMemObject(outputCross_l);
   clReleaseMemObject(outputCross_r);
   clReleaseKernel(kernel);
   clReleaseProgram(program);
@@ -187,8 +164,6 @@ int main()
   program = CreateProgram(LoadKernel("kernels/aggregation.cl"), context);
   clBuildProgram(program, 1, &deviceIds.data()[device_id], nullptr, nullptr, nullptr);
   kernel = clCreateKernel(program, "Aggregation", &error);
-  inputImage_l = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[0].width, result[0].height, 0, const_cast<unsigned char*> (result[0].pixel.data()), &error);
-  inputImage_r = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[1].width, result[1].height, 0, const_cast<unsigned char*> (result[1].pixel.data()), &error);
   cl_mem inputCross_l = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int) * result[0].width * result[0].height * 4, cross_l, &error);
   cl_mem inputCross_r = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int) * result[1].width * result[1].height * 4, cross_r, &error);
   cl_mem disparity = clCreateImage2D(context, CL_MEM_WRITE_ONLY, &format, result[2].width, result[2].height, 0, nullptr, &error);
@@ -198,12 +173,10 @@ int main()
   clSetKernelArg(kernel, 3, sizeof(cl_mem), &inputCross_r);
   clSetKernelArg(kernel, 4, sizeof(cl_mem), &disparity);
   clFinish(queue);
-  cl_event event_disp;
-  ErCheck(clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, size, nullptr, 0, nullptr, &event_disp));
-  clWaitForEvents(1, &event_disp);
-  clFinish(queue);
+  cl_event event_aggro;
+  ErCheck(clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, size, nullptr, 0, nullptr, &event_aggro));
+  ErCheck(clWaitForEvents(1, &event_aggro));
   clEnqueueReadImage(queue, disparity, CL_TRUE, origin, region, 0, 0, result[2].pixel.data(), 0, nullptr, nullptr);
-  clFinish(queue);
   clReleaseMemObject(inputImage_l);
   clReleaseMemObject(inputImage_r);
   clReleaseMemObject(inputCross_l);
@@ -217,10 +190,26 @@ int main()
   //Get measured time data
   cl_ulong time_start, time_end;
   double total_time;
-  clGetEventProfilingInfo(event_median, CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, nullptr);
-  clGetEventProfilingInfo(event_median, CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, nullptr);
+  clGetEventProfilingInfo(event_median_l, CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, nullptr);
+  clGetEventProfilingInfo(event_median_l, CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, nullptr);
   total_time = time_end - time_start;
-  printf("\nExecution time in milliseconds = %0.3f ms\n", (total_time / 1000000.0));
+  printf("\nMedian(left) Execution time in milliseconds = %0.3f ms", (total_time / 1000000.0));
+  clGetEventProfilingInfo(event_median_r, CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, nullptr);
+  clGetEventProfilingInfo(event_median_r, CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, nullptr);
+  total_time = time_end - time_start;
+  printf("\nMedian(right) Execution time in milliseconds = %0.3f ms", (total_time / 1000000.0));
+  clGetEventProfilingInfo(event_cross_l, CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, nullptr);
+  clGetEventProfilingInfo(event_cross_l, CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, nullptr);
+  total_time = time_end - time_start;
+  printf("\nCross(left) Execution time in milliseconds = %0.3f ms", (total_time / 1000000.0));
+  clGetEventProfilingInfo(event_cross_r, CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, nullptr);
+  clGetEventProfilingInfo(event_cross_r, CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, nullptr);
+  total_time = time_end - time_start;
+  printf("\nCross(right) Execution time in milliseconds = %0.3f ms", (total_time / 1000000.0));
+  clGetEventProfilingInfo(event_aggro, CL_PROFILING_COMMAND_START, sizeof(time_start), &time_start, nullptr);
+  clGetEventProfilingInfo(event_aggro, CL_PROFILING_COMMAND_END, sizeof(time_end), &time_end, nullptr);
+  total_time = time_end - time_start;
+  printf("\nAggregation cost Execution time in milliseconds = %0.3f ms\n", (total_time / 1000000.0));
   printf("Again?...(y/n)  ");
   char y_or_n = 'n';  
   scanf(" %c", &y_or_n);
