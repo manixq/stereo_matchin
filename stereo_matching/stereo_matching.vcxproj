@@ -166,6 +166,7 @@
     <None Include="kernels\aggregation.cl" />
     <None Include="kernels\cross.cl" />
     <None Include="kernels\decimate.cl" />
+    <None Include="kernels\disparity.cl" />
     <None Include="kernels\interpolate.cl" />
     <None Include="kernels\median.cl" />
   </ItemGroup>

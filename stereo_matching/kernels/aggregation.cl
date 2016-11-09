@@ -48,29 +48,37 @@ __kernel void Aggregation (
     int v_minus_l = input_cross_l[pos.x + pos.y * dim.x + dim.x * dim.y * 2];
     int v_plus_l = input_cross_l[pos.x + pos.y * dim.x + dim.x * dim.y * 3];
 
-    //find dispariity 
-    int d = -1;
-    int disp = disparity(input_l, input_r, pos, d);
-    int disp_temp;
-    float min_result = 1000.0f;
-    int d_min = 60;
+    float min_result = 100000.0f;
+    int d_min = 100;
+    int h_minus_r = 0;
+    int h_plus_r = 0;
+    int v_minus_r = 0;
+    int v_plus_r = 0;
+
+    //combined local support
+    int v_minus = 0;
+    int v_plus = 0;
+    int pix_num = 0;
+    int disp_sum = 0;
+    int h_minus = 0;
+    int h_plus = 0;
+
     for (int d = -1; d >= -60; d--)
     {
-
      //now 'd' is offset for pixel from right image
-     int h_minus_r = 0;
-     int h_plus_r = 0;
-     int v_minus_r = input_cross_l[pos.x + d + pos.y * dim.x + dim.x * dim.y * 2];
-     int v_plus_r = input_cross_l[pos.x + d + pos.y * dim.x + dim.x * dim.y * 3];
+     h_minus_r = 0;
+     h_plus_r = 0;
+     v_minus_r = input_cross_l[pos.x + d + pos.y * dim.x + dim.x * dim.y * 2];
+     v_plus_r = input_cross_l[pos.x + d + pos.y * dim.x + dim.x * dim.y * 3];
 
      //combined local support
-     int v_minus = select(v_minus_r, v_minus_l, islessequal((float)(v_minus_r), (float)(v_minus_l)));
-     int v_plus = select(v_plus_l, v_plus_r, islessequal((float)(v_plus_r), (float)(v_plus_l)));
+     v_minus = select(v_minus_r, v_minus_l, islessequal((float)(v_minus_r), (float)(v_minus_l)));
+     v_plus = select(v_plus_l, v_plus_r, islessequal((float)(v_plus_r), (float)(v_plus_l)));
 
-     int pix_num = 0;
-     int disp_sum = 0;
-     int h_minus = 0;
-     int h_plus = 0;
+     pix_num = 0;
+     disp_sum = 0;
+     h_minus = 0;
+     h_plus = 0;
      for (int i = v_minus; i <= v_plus; i++)
      {
       //get current row from both images
@@ -88,9 +96,9 @@ __kernel void Aggregation (
      float result = (float)(disp_sum) / (float)(pix_num);
      result = result / 10000;
      d_min = select(d_min, d, islessequal(result, min_result));
-     min_result = select(min_result, result, islessequal(result, min_result));
-     
+     min_result = select(min_result, result, islessequal(result, min_result)); 
     }
-    float d_result = (float)((-1)*d_min)/120;
+    float d_result = (float)((-1)*d_min)/50.0;
+    d_result = 1.0 - d_result;
     write_imagef(output, (int2)(pos.x, pos.y), (float4)(d_result, d_result, d_result, 1.0f));
 }

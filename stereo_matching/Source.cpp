@@ -172,20 +172,39 @@ int main()
   clSetKernelArg(kernel, 2, sizeof(cl_mem), &inputCross_l);
   clSetKernelArg(kernel, 3, sizeof(cl_mem), &inputCross_r);
   clSetKernelArg(kernel, 4, sizeof(cl_mem), &disparity);
-  clFinish(queue);
   cl_event event_aggro;
   ErCheck(clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, size, nullptr, 0, nullptr, &event_aggro));
   ErCheck(clWaitForEvents(1, &event_aggro));
   clEnqueueReadImage(queue, disparity, CL_TRUE, origin, region, 0, 0, result[2].pixel.data(), 0, nullptr, nullptr);
+
+  
   clReleaseMemObject(inputImage_l);
   clReleaseMemObject(inputImage_r);
-  clReleaseMemObject(inputCross_l);
   clReleaseMemObject(inputCross_r);
   clReleaseMemObject(disparity);
+  lodepng::encode("sukub/initial_disparity.png", result[2].pixel, result[2].width, result[2].height);
+
+  //final disparity
+  program = CreateProgram(LoadKernel("kernels/disparity.cl"), context);
+  clBuildProgram(program, 1, &deviceIds.data()[device_id], nullptr, nullptr, nullptr);
+  kernel = clCreateKernel(program, "Disparity", &error);
+  disparity = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[2].width, result[2].height, 0, const_cast<unsigned char*> (result[2].pixel.data()), &error);
+  cl_mem final_disparity = clCreateImage2D(context, CL_MEM_WRITE_ONLY, &format, result[0].width, result[0].height, 0, nullptr, &error);
+  clSetKernelArg(kernel, 0, sizeof(cl_mem), &disparity);
+  clSetKernelArg(kernel, 1, sizeof(cl_mem), &inputCross_l);
+  clSetKernelArg(kernel, 2, sizeof(cl_mem), &final_disparity);
+  cl_event event_disp;
+  ErCheck(clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, size, nullptr, 0, nullptr, &event_disp));
+  ErCheck(clWaitForEvents(1, &event_disp));
+  clEnqueueReadImage(queue, final_disparity, CL_TRUE, origin, region, 0, 0, result[0].pixel.data(), 0, nullptr, nullptr);
+
+  clReleaseMemObject(final_disparity);
+  clReleaseMemObject(disparity);
+  clReleaseMemObject(inputCross_l);
   clReleaseCommandQueue(queue);
   clReleaseKernel(kernel);
   clReleaseProgram(program);
-  lodepng::encode("sukub/disparity.png", result[2].pixel, result[2].width, result[2].height);
+  lodepng::encode("sukub/final_disparity.png", result[0].pixel, result[0].width, result[0].height);
 
   //Get measured time data
   cl_ulong time_start, time_end;
@@ -224,130 +243,5 @@ int main()
   }
   clReleaseContext(context);
  }
- /*
- //DEPTH
- // Create a program from source
- program = CreateProgram(LoadKernel("kernels/depth.cl"), context);
-
- clBuildProgram(program, deviceIdCount, deviceIds.data(), nullptr, nullptr, nullptr);
-
- kernel = clCreateKernel(program, "Filter", &error);
-
- inputImage = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, imgL.width, imgL.height, 0,  // This is a bug in the spec
-  const_cast<unsigned char*> (imgL.pixel.data()), &error);
- cl_mem inputImage2 = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, imgR.width, imgR.height, 0,  // This is a bug in the spec
-  const_cast<unsigned char*> (imgR.pixel.data()), &error);
-
- int mywidth = imgL.width;
- outputImage = clCreateImage2D(context, CL_MEM_WRITE_ONLY, &format, imgL.width, imgL.height, 0, nullptr, &error);
- cl_mem my_width = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &mywidth, &error);
-
- clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputImage);
- clSetKernelArg(kernel, 1, sizeof(cl_mem), &inputImage2);
- clSetKernelArg(kernel, 2, sizeof(cl_mem), &outputImage);
- clSetKernelArg(kernel, 3, sizeof(cl_mem), &my_width);
- clSetKernelArg(kernel, 4, sizeof(int), nullptr);
-
- queue = clCreateCommandQueue(context, deviceIds[0], 0, &error);
-
-
- clEnqueueNDRangeKernel(queue, kernel, 2, offset, size, nullptr, 0, nullptr, nullptr);
-
-
-
- std::fill(result.pixel.begin(), result.pixel.end(), 0);
-
- // Get the result back to the host
- origin[3] = { 0 };
- region[0] = imgL.width / 4;// {imgL.width, imgL.height, 1};
- clEnqueueReadImage(queue, outputImage, CL_TRUE,  origin, region, 0, 0,  result.pixel.data(), 0, nullptr, nullptr);
-
- lodepng::encode("sukub/depth.png", result.pixel , result.width, result.height);
-
- clReleaseMemObject(outputImage);
- clReleaseMemObject(inputImage);
- clReleaseMemObject(inputImage2);
- clReleaseCommandQueue(queue);
- clReleaseKernel(kernel);
- clReleaseProgram(program);
- 
- //DECYMACJA
- // Create a program from source
- program = CreateProgram(LoadKernel("kernels/decimate.cl"), context);
-
- clBuildProgram(program, deviceIdCount, deviceIds.data(), nullptr, nullptr, nullptr);
-
-  kernel = clCreateKernel(program, "Filter", &error);
-
- inputImage = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result.width, result.height, 0,  // This is a bug in the spec
- const_cast<unsigned char*> (result.pixel.data()), &error);
- 
-
- outputImage = clCreateImage2D(context, CL_MEM_WRITE_ONLY, &format, result.width, result.height, 0, nullptr, &error);
- 
- clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputImage);
- clSetKernelArg(kernel, 1, sizeof(cl_mem), &outputImage);
-
- queue = clCreateCommandQueue(context, deviceIds[0], 0, &error);
-
- clEnqueueNDRangeKernel(queue, kernel, 2, offset, size, nullptr, 0, nullptr, nullptr);
-
- result = imgL;
-
- std::fill(result.pixel.begin(), result.pixel.end(), 0);
-
- region[0] = imgL.width;
- clEnqueueReadImage(queue, outputImage, CL_TRUE, origin, region, 0, 0, result.pixel.data(), 0, nullptr, nullptr);
-
- lodepng::encode("sukub/decimated_depth.png", result.pixel, result.width, result.height);
-
-
-
- clReleaseMemObject(outputImage);
- clReleaseMemObject(inputImage);
- clReleaseCommandQueue(queue);
- clReleaseKernel(kernel);
- clReleaseProgram(program);
-
- //INTERPOLACJA
-
- // Create a program from source
- program = CreateProgram(LoadKernel("kernels/interpolate.cl"), context);
-
- clBuildProgram(program, deviceIdCount, deviceIds.data(), nullptr, nullptr, nullptr);
-
- kernel = clCreateKernel(program, "Filter", &error);
-
-
-
- inputImage = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result.width, result.height, 0,  // This is a bug in the spec
-  const_cast<unsigned char*> (result.pixel.data()), &error);
-
-
- outputImage = clCreateImage2D(context, CL_MEM_WRITE_ONLY, &format, result.width, result.height, 0, nullptr, &error);
-
- clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputImage);
- clSetKernelArg(kernel, 1, sizeof(cl_mem), &outputImage);
-
- queue = clCreateCommandQueue(context, deviceIds[0], 0, &error);
-
- clEnqueueNDRangeKernel(queue, kernel, 2, offset, size, nullptr, 0, nullptr, nullptr);
-
- result = imgL;
-
- std::fill(result.pixel.begin(), result.pixel.end(), 0);
-
- region[0] = imgL.width;
- clEnqueueReadImage(queue, outputImage, CL_TRUE, origin, region, 0, 0, result.pixel.data(), 0, nullptr, nullptr);
-
- lodepng::encode("sukub/interpolated_depth.png", result.pixel, result.width, result.height);
-
-
- clReleaseMemObject(outputImage);
- clReleaseMemObject(inputImage);
- clReleaseCommandQueue(queue);
- clReleaseKernel(kernel);
- clReleaseProgram(program);*/
- //clReleaseContext(context);
  system("pause");
 }
