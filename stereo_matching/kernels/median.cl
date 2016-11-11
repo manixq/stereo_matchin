@@ -6,17 +6,17 @@ CLK_NORMALIZED_COORDS_FALSE
 //for sorting rows and columns
 void sort(float4 *x, float4 *y, float4 *z)
 {
- float4 temp = select(*y, *x, isless(*x, *y));
- *y = select(*x, *y, isless(*x, *y));
- *x = temp;
+ float4 temp = *x;
+ *x = select(*y, *x, isless(*x, *y));
+ *y = select(temp, *y, isless(temp, *y));
 
- temp = select(*z, *y, isless(*y, *z));
- *z = select(*y, *z, isless(*y, *z));
- *y = temp;
+ temp = *y;
+ *y = select(*z, *y, isless(*y, *z));
+ *z = select(temp, *z, isless(temp, *z));
 
- temp = select(*y, *x, isless(*x, *y));
- *y = select(*x, *y, isless(*x, *y));
- *x = temp;
+ temp = *x;
+ *x = select(*y, *x, isless(*x, *y));
+ *y = select(temp, *y, isless(temp, *y));
 }
 
 __kernel void Median(

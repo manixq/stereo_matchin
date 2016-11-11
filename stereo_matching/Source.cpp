@@ -83,9 +83,9 @@ int main()
   cl_context context = clCreateContext(contextProperties, 1, &deviceIds.data()[device_id], nullptr, nullptr, &error);
  
   Image imgL;
-  lodepng::decode(imgL.pixel, imgL.width, imgL.height, "sukub/imP.png");
+  lodepng::decode(imgL.pixel, imgL.width, imgL.height, "sukub/imP1.png");
   Image imgR;
-  lodepng::decode(imgR.pixel, imgR.width, imgR.height, "sukub/imL.png");
+  lodepng::decode(imgR.pixel, imgR.width, imgR.height, "sukub/imL1.png");
 
   //variables
   static const cl_image_format format = { CL_RGBA, CL_UNORM_INT8 };
@@ -116,7 +116,7 @@ int main()
   clWaitForEvents(1, &event_median_l);
   clEnqueueReadImage(queue, outputImage_l, CL_TRUE, origin, region, 0, 0, result[0].pixel.data(), 0, nullptr,nullptr);
   lodepng::encode("sukub/median_L.png", result[0].pixel, result[0].width, result[0].height);
-
+  clReleaseMemObject(inputImage_l);
   //second image
   cl_mem inputImage_r = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[1].width, result[1].height, 0, const_cast<unsigned char*> (result[1].pixel.data()), &error);
   cl_mem outputImage_r = clCreateImage2D(context, CL_MEM_WRITE_ONLY, &format, result[1].width, result[1].height, 0, nullptr, &error);
@@ -126,6 +126,7 @@ int main()
   clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, globalSize, local, 0, nullptr, &event_median_r);
   clWaitForEvents(1, &event_median_r);
   clEnqueueReadImage(queue, outputImage_r, CL_TRUE, origin, region, 0, 0, result[1].pixel.data(), 0, nullptr, nullptr);
+  clReleaseMemObject(inputImage_r);
   clReleaseKernel(kernel);
   clReleaseProgram(program);
   lodepng::encode("sukub/median_R.png", result[1].pixel, result[1].width, result[1].height);
@@ -137,6 +138,7 @@ int main()
   program = CreateProgram(LoadKernel("kernels/cross.cl"), context);
   clBuildProgram(program, 1, &deviceIds.data()[device_id], nullptr, nullptr, nullptr);
   kernel = clCreateKernel(program, "Cross", &error);
+  inputImage_l = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[0].width, result[0].height, 0, const_cast<unsigned char*> (result[0].pixel.data()), &error);
   cl_mem outputCross_l = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(int) * result[0].width * result[0].height * 4, nullptr, &error);
   clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputImage_l);
   clSetKernelArg(kernel, 1, sizeof(cl_mem), &outputCross_l);
@@ -146,6 +148,7 @@ int main()
   auto *cross_l = static_cast<int*>(malloc(sizeof(int) * result[0].width * result[0].height * 4));
   clEnqueueReadBuffer(queue, outputCross_l, CL_TRUE, 0, sizeof(int) * result[0].width * result[0].height * 4, cross_l, 0, nullptr, nullptr);
   //right image 
+  inputImage_r = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[1].width, result[1].height, 0, const_cast<unsigned char*> (result[1].pixel.data()), &error);
   cl_mem outputCross_r = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(int) * result[1].width * result[1].height * 4, nullptr, &error);
   clSetKernelArg(kernel, 0, sizeof(cl_mem), &inputImage_r);
   clSetKernelArg(kernel, 1, sizeof(cl_mem), &outputCross_r);
