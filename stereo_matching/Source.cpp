@@ -148,18 +148,18 @@ int main()
   program = CreateProgram(LoadKernel("kernels/cross.cl"), context);
   clBuildProgram(program, 1, &deviceIds.data()[device_id], nullptr, nullptr, nullptr);
   kernel = clCreateKernel(program, "Cross", &error);
-  cl_mem Cross_l = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(int) * result[0].width * result[0].height * 4, nullptr, &error);
+  cl_mem cross_l = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(int) * result[0].width * result[0].height * 4, nullptr, &error);
   clSetKernelArg(kernel, 0, sizeof(cl_mem), &median_l);
-  clSetKernelArg(kernel, 1, sizeof(cl_mem), &Cross_l);
+  clSetKernelArg(kernel, 1, sizeof(cl_mem), &cross_l);
   cl_event event_cross_l;
   ErCheck(clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, cross_size, nullptr, 0, nullptr, &event_cross_l));
   clWaitForEvents(1, &event_cross_l);
  // auto *cross_l = static_cast<int*>(malloc(sizeof(int) * result[0].width * result[0].height * 4));
   //clEnqueueReadBuffer(queue, Cross_l, CL_TRUE, 0, sizeof(int) * result[0].width * result[0].height * 4, cross_l, 0, nullptr, nullptr);
   //right image 
-  cl_mem Cross_r = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(int) * result[1].width * result[1].height * 4, nullptr, &error);
+  cl_mem cross_r = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(int) * result[1].width * result[1].height * 4, nullptr, &error);
   clSetKernelArg(kernel, 0, sizeof(cl_mem), &median_r);
-  clSetKernelArg(kernel, 1, sizeof(cl_mem), &Cross_r);
+  clSetKernelArg(kernel, 1, sizeof(cl_mem), &cross_r);
   cl_event event_cross_r;
   ErCheck(clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, cross_size, nullptr, 0, nullptr, &event_cross_r));
   clWaitForEvents(1, &event_cross_r);
@@ -175,14 +175,10 @@ int main()
   program = CreateProgram(LoadKernel("kernels/aggregation.cl"), context);
   clBuildProgram(program, 1, &deviceIds.data()[device_id], nullptr, nullptr, nullptr);
   kernel = clCreateKernel(program, "Aggregation", &error);
-  cl_mem disparity = clCreateImage2D(context, CL_MEM_READ_WRITE, &format, result[2].width, result[2].height, 0, nullptr, &error);
-  cl_mem cost = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(int) * result[1].width * result[1].height * 61, nullptr, &error);
+  cl_mem cost_ping = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(int) * result[1].width * result[1].height * 61, nullptr, &error);
   clSetKernelArg(kernel, 0, sizeof(cl_mem), &median_l);
   clSetKernelArg(kernel, 1, sizeof(cl_mem), &median_r);
-  clSetKernelArg(kernel, 2, sizeof(cl_mem), &Cross_l);
-  clSetKernelArg(kernel, 3, sizeof(cl_mem), &Cross_r);
-  clSetKernelArg(kernel, 4, sizeof(cl_mem), &disparity);
-  clSetKernelArg(kernel, 5, sizeof(cl_mem), &cost);
+  clSetKernelArg(kernel, 2, sizeof(cl_mem), &cost_ping);
   cl_event event_aggro;
   ErCheck(clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, size, nullptr, 0, nullptr, &event_aggro));
   ErCheck(clWaitForEvents(1, &event_aggro));
@@ -190,8 +186,99 @@ int main()
   //clEnqueueReadImage(queue, disparity, CL_TRUE, origin, region, 0, 0, result[2].pixel.data(), 0, nullptr, nullptr);
   clReleaseMemObject(median_l);
   clReleaseMemObject(median_r);
-  clReleaseMemObject(Cross_r);
+  clReleaseKernel(kernel);
+  clReleaseProgram(program);
   //lodepng::encode("sukub/initial_disparity.png", result[2].pixel, result[2].width, result[2].height);
+
+  //horizontal integral image
+  std::size_t integra_size[3] = { 1, result[0].height, 61 };
+  printf("OII - horizontal integral");
+  program = CreateProgram(LoadKernel("kernels/integral_h.cl"), context);
+  clBuildProgram(program, 1, &deviceIds.data()[device_id], nullptr, nullptr, nullptr);
+  kernel = clCreateKernel(program, "Integral_h", &error);
+  cl_mem im_size = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), size, &error);
+  cl_mem cost_pong = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(int) * result[1].width * result[1].height * 61, nullptr, &error);
+  clSetKernelArg(kernel, 0, sizeof(cl_mem), &cost_ping);
+  clSetKernelArg(kernel, 1, sizeof(cl_mem), &cost_pong);
+  clSetKernelArg(kernel, 2, sizeof(cl_mem), &im_size);
+  cl_event event_integral;
+  ErCheck(clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, integra_size, nullptr, 0, nullptr, &event_integral));
+  ErCheck(clWaitForEvents(1, &event_integral));
+  clReleaseKernel(kernel);
+  clReleaseProgram(program);
+  printf("->");
+
+  //horizontal image cross cost
+  std::size_t hcross_size[3] = { result[0].width, result[0].height, 61 };
+  printf("OII - horizontal cross");
+  program = CreateProgram(LoadKernel("kernels/oii_hcross.cl"), context);
+  clBuildProgram(program, 1, &deviceIds.data()[device_id], nullptr, nullptr, nullptr);
+  kernel = clCreateKernel(program, "Oii_hcross", &error);
+  clSetKernelArg(kernel, 0, sizeof(cl_mem), &cross_l);
+  clSetKernelArg(kernel, 1, sizeof(cl_mem), &cross_r);
+  clSetKernelArg(kernel, 2, sizeof(cl_mem), &cost_pong);
+  clSetKernelArg(kernel, 3, sizeof(cl_mem), &cost_ping);
+  clSetKernelArg(kernel, 4, sizeof(cl_mem), &im_size);
+  cl_event event_oii;
+  ErCheck(clEnqueueNDRangeKernel(queue, kernel, 3, nullptr, hcross_size, nullptr, 0, nullptr, &event_oii));
+  ErCheck(clWaitForEvents(1, &event_oii));
+  clReleaseKernel(kernel);
+  clReleaseProgram(program);
+  printf("->");
+
+  //vertical integral image
+  std::size_t integras_size[3] = { result[0].width, 1, 61 };
+  printf("OII - vertical integral");
+  program = CreateProgram(LoadKernel("kernels/integral_v.cl"), context);
+  clBuildProgram(program, 1, &deviceIds.data()[device_id], nullptr, nullptr, nullptr);
+  kernel = clCreateKernel(program, "Integral_v", &error);
+  clSetKernelArg(kernel, 0, sizeof(cl_mem), &cost_ping);
+  clSetKernelArg(kernel, 1, sizeof(cl_mem), &cost_pong);
+  clSetKernelArg(kernel, 2, sizeof(cl_mem), &im_size);
+  cl_event event_integralv;
+  ErCheck(clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, integras_size, nullptr, 0, nullptr, &event_integralv));
+  ErCheck(clWaitForEvents(1, &event_integralv));
+  clReleaseKernel(kernel);
+  clReleaseProgram(program);
+  printf("->");
+
+  //vertical image cross cost
+  std::size_t vcross_size[3] = { result[0].width, result[0].height, 61 };
+  printf("OII - vertical cross");
+  program = CreateProgram(LoadKernel("kernels/oii_vcross.cl"), context);
+  clBuildProgram(program, 1, &deviceIds.data()[device_id], nullptr, nullptr, nullptr);
+  kernel = clCreateKernel(program, "Oii_vcross", &error);
+  clSetKernelArg(kernel, 0, sizeof(cl_mem), &cross_l);
+  clSetKernelArg(kernel, 1, sizeof(cl_mem), &cross_r);
+  clSetKernelArg(kernel, 2, sizeof(cl_mem), &cost_pong);
+  clSetKernelArg(kernel, 3, sizeof(cl_mem), &cost_ping);
+  clSetKernelArg(kernel, 4, sizeof(cl_mem), &im_size);
+  cl_event event_oiiv;
+  ErCheck(clEnqueueNDRangeKernel(queue, kernel, 3, nullptr, vcross_size, nullptr, 0, nullptr, &event_oiiv));
+  ErCheck(clWaitForEvents(1, &event_oiiv));
+  clReleaseMemObject(cross_r);
+  clReleaseMemObject(im_size);
+  clReleaseKernel(kernel);
+  clReleaseProgram(program);
+  printf("->");
+
+  //initial disparity
+  printf("Initial disparity");
+  program = CreateProgram(LoadKernel("kernels/init_disparity.cl"), context);
+  clBuildProgram(program, 1, &deviceIds.data()[device_id], nullptr, nullptr, nullptr);
+  kernel = clCreateKernel(program, "Init_disparity", &error);
+  cl_mem disparity = clCreateImage2D(context, CL_MEM_READ_WRITE, &format, result[0].width, result[0].height, 0, nullptr, &error);
+  clSetKernelArg(kernel, 0, sizeof(cl_mem), &cost_ping);
+  clSetKernelArg(kernel, 1, sizeof(cl_mem), &disparity);
+  cl_event event_initd;
+  ErCheck(clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, size, nullptr, 0, nullptr, &event_initd));
+  ErCheck(clWaitForEvents(1, &event_initd));
+  clReleaseKernel(kernel);
+  clReleaseProgram(program);
+  printf("->");
+
+  clEnqueueReadImage(queue, disparity, CL_TRUE, origin, region, 0, 0, result[0].pixel.data(), 0, nullptr, nullptr);
+  lodepng::encode("sukub/initial_disparity.png", result[0].pixel, result[0].width, result[0].height);
 
   //final disparity
   printf("Final disparity");
@@ -200,7 +287,7 @@ int main()
   kernel = clCreateKernel(program, "Disparity", &error);
   cl_mem final_disparity = clCreateImage2D(context, CL_MEM_WRITE_ONLY, &format, result[0].width, result[0].height, 0, nullptr, &error);
   clSetKernelArg(kernel, 0, sizeof(cl_mem), &disparity);
-  clSetKernelArg(kernel, 1, sizeof(cl_mem), &Cross_l);
+  clSetKernelArg(kernel, 1, sizeof(cl_mem), &cross_l);
   clSetKernelArg(kernel, 2, sizeof(cl_mem), &final_disparity);
   cl_event event_disp;
   ErCheck(clEnqueueNDRangeKernel(queue, kernel, 2, nullptr, size, nullptr, 0, nullptr, &event_disp));
@@ -210,7 +297,7 @@ int main()
 
   clReleaseMemObject(final_disparity);
   clReleaseMemObject(disparity);
-  clReleaseMemObject(Cross_l);
+  clReleaseMemObject(cross_l);
   clReleaseCommandQueue(queue);
   clReleaseKernel(kernel);
   clReleaseProgram(program);

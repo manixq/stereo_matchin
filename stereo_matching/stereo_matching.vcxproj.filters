@@ -49,6 +49,21 @@
     <None Include="kernels\disparity.cl">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="kernels\integral_h.cl">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="kernels\oii_hcross.cl">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="kernels\oii_vcross.cl">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="kernels\integral_v.cl">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="kernels\init_disparity.cl">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="kernels\depth.cl">

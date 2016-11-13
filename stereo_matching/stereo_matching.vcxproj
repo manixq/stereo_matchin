@@ -167,8 +167,13 @@
     <None Include="kernels\cross.cl" />
     <None Include="kernels\decimate.cl" />
     <None Include="kernels\disparity.cl" />
+    <None Include="kernels\init_disparity.cl" />
+    <None Include="kernels\integral_h.cl" />
+    <None Include="kernels\integral_v.cl" />
     <None Include="kernels\interpolate.cl" />
     <None Include="kernels\median.cl" />
+    <None Include="kernels\oii_hcross.cl" />
+    <None Include="kernels\oii_vcross.cl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
