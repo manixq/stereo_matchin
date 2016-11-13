@@ -34,8 +34,8 @@ __kernel void Disparity (
     }
     for (int i = 0; i <= 100; i++)
     {
-     result_indx = select(i, result_indx, islessequal((float)(tab[i]), (float)(result)));
-     result = select(tab[i], result, islessequal((float)(tab[i]), (float)(result)));
+     result_indx = select(i, result_indx, isless((float)(tab[i]), (float)(result)));
+     result = select(tab[i], result, isless((float)(tab[i]), (float)(result)));
     }
     float d_result = (float)(result_indx) / 100.0;
     write_imagef(output, (int2)(pos.x, pos.y), (float4)(d_result, d_result, d_result, 1.0f));

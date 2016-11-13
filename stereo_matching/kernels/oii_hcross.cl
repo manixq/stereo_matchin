@@ -9,7 +9,7 @@ __kernel void Oii_hcross (
 	__global int* cross_l,
  __global int* cross_r,
  __global int* cost,
- __global int* cross_cost,
+ __global int* new_cost,
  __global int* size
  )
 {
@@ -21,11 +21,11 @@ __kernel void Oii_hcross (
  int h_plus_l = cross_l[pos.x + pos.y * size[0] + size[0] * size[1]];
 
  //calc current combined row
- int h_minus = select(h_minus_r, h_minus_l, islessequal((float)(h_minus_r), (float)(h_minus_l)));
- int h_plus = select(h_plus_l, h_plus_r, islessequal((float)(h_plus_r), (float)(h_plus_l)));
+ int h_minus = select(h_minus_r, h_minus_l, isless((float)(h_minus_r), (float)(h_minus_l)));
+ int h_plus = select(h_plus_l, h_plus_r, isless((float)(h_plus_r), (float)(h_plus_l)));
 
  int delta = h_plus - h_minus;
- int new_one = (cost[pos.x + h_plus + size[0] * pos.y + size[0] * size[1] * pos.z] - cost[pos.x + h_minus + size[0] * pos.y + size[0] * size[1] * pos.z]) / delta;
- //barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
- cross_cost[pos.x + size[0] * pos.y + size[0] * size[1] * pos.z] = new_one;
+ int new_one = (cost[pos.x + h_plus + size[0] * pos.y + size[0] * size[1] * pos.z] - cost[pos.x + h_minus - 1 + size[0] * pos.y + size[0] * size[1] * pos.z]) / delta;
+// barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+ new_cost[pos.x + size[0] * pos.y + size[0] * size[1] * pos.z] = new_one;
 }

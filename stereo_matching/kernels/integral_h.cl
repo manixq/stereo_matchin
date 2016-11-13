@@ -6,7 +6,6 @@ __constant sampler_t sampler =
 
 
 __kernel void Integral_h (
- __global int* costa,
  __global int* cost,
  __global int* size
  )
@@ -14,10 +13,10 @@ __kernel void Integral_h (
  //x=height, y=depth
  const int2 pos = {get_global_id(0), get_global_id(1)};
 
- int sum = costa[size[0] * pos.x + size[0] * size[1] * pos.y];
- for (int i = 1; i < size[0]; i++)
+ int sum = 0;
+ for (int i = 0; i < size[0]; i++)
  {
-  sum = sum + costa[i + size[0] * pos.x + size[0] * size[1] * pos.y];
+  sum = sum + cost[i + size[0] * pos.x + size[0] * size[1] * pos.y];
   cost[i + size[0] * pos.x + size[0] * size[1] * pos.y] = sum;
  }
 }

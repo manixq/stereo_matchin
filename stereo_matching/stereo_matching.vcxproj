@@ -150,27 +150,19 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="lodepng.cpp" />
-    <ClCompile Include="Source.cpp" />
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Header.h" />
+    <ClInclude Include="main.h" />
     <ClInclude Include="lodepng.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="kernels\depth.cl">
-      <FileType>Document</FileType>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-    </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="kernels\aggregation.cl" />
     <None Include="kernels\cross.cl" />
-    <None Include="kernels\decimate.cl" />
     <None Include="kernels\disparity.cl" />
     <None Include="kernels\init_disparity.cl" />
     <None Include="kernels\integral_h.cl" />
     <None Include="kernels\integral_v.cl" />
-    <None Include="kernels\interpolate.cl" />
     <None Include="kernels\median.cl" />
     <None Include="kernels\oii_hcross.cl" />
     <None Include="kernels\oii_vcross.cl" />
