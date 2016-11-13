@@ -8,8 +8,8 @@ __constant sampler_t sampler =
 __kernel void Oii_vcross (
 	__global int* cross_l,
  __global int* cross_r,
- __global int* cost_pong,
- __global int* cost_ping,
+ __global int* cost,
+ __global int* cross_cost,
  __global int* size
  )
 {
@@ -24,5 +24,7 @@ __kernel void Oii_vcross (
  int v_minus = select(v_minus_r, v_minus_l, islessequal((float)(v_minus_r), (float)(v_minus_l)));
  int v_plus = select(v_plus_l, v_plus_r, islessequal((float)(v_plus_r), (float)(v_plus_l)));
  int delta = v_plus - v_minus;
- cost_ping[pos.x + size[0] * pos.y + size[0] * size[1] * pos.z] = (cost_pong[pos.x + size[0] * (pos.y + v_plus) + size[0] * size[1] * pos.z] - cost_pong[pos.x + size[0] * (pos.y + v_minus) + size[0] * size[1] * pos.z]) / delta;
+ int new_one = (cost[pos.x + size[0] * (pos.y + v_plus) + size[0] * size[1] * pos.z] - cost[pos.x + size[0] * (pos.y + v_minus) + size[0] * size[1] * pos.z]) / delta;
+ //barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+ cross_cost[pos.x + size[0] * pos.y + size[0] * size[1] * pos.z] = new_one;
 }

@@ -6,13 +6,13 @@ __constant sampler_t sampler =
 int check_similarity(image2d_t input, int2 pos, int old_one, int current_one, float4 color_data)
 {
  float4 neighbour_data = read_imagef(input, sampler, pos);
- int color_similarity_r = abs_diff((int)(1000 * color_data.x), (int)(1000 * neighbour_data.x));
- int color_similarity_g = abs_diff((int)(1000 * color_data.y), (int)(1000 * neighbour_data.y));
- int color_similarity_b = abs_diff((int)(1000 * color_data.z), (int)(1000 * neighbour_data.z));
+ int color_similarity_r = abs_diff((int)(10000 * color_data.x), (int)(10000 * neighbour_data.x));
+ int color_similarity_g = abs_diff((int)(10000 * color_data.y), (int)(10000 * neighbour_data.y));
+ int color_similarity_b = abs_diff((int)(10000 * color_data.z), (int)(10000 * neighbour_data.z));
  //10% error - and let it go
- int check_r = select(0, 1, islessequal((float)(color_similarity_r)/10, 20.0f));
- int check_g = select(0, 1, islessequal((float)(color_similarity_g)/10, 20.0f));
- int check_b = select(0, 1, islessequal((float)(color_similarity_b)/10, 20.0f));
+ int check_r = select(0, 1, islessequal((float)(color_similarity_r)/100, 20.0f));
+ int check_g = select(0, 1, islessequal((float)(color_similarity_g)/100, 20.0f));
+ int check_b = select(0, 1, islessequal((float)(color_similarity_b)/100, 20.0f));
  //if 1 then fail
  int flag = select(0, 1,isgreater((float)(current_one - old_one), 1.0f));
  current_one = select(old_one, current_one, islessequal(3.0f, (float)(check_r + check_b + check_g)));
