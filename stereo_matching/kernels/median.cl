@@ -1,7 +1,3 @@
-__constant sampler_t sampler =
-CLK_NORMALIZED_COORDS_FALSE
-| CLK_ADDRESS_CLAMP_TO_EDGE
-| CLK_FILTER_NEAREST;
 
 //for sorting rows and columns
 void sort(float4 *x, float4 *y, float4 *z)

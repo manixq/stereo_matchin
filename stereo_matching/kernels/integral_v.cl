@@ -1,12 +1,7 @@
-__constant sampler_t sampler =
-  CLK_NORMALIZED_COORDS_FALSE
-| CLK_ADDRESS_CLAMP_TO_EDGE
-| CLK_FILTER_NEAREST;
-
 
 
 __kernel void Integral_v (
- __global int* new_cost,
+ __global int* cost,
  __global int* size
  )
 {
@@ -16,7 +11,7 @@ __kernel void Integral_v (
  int sum = 0;
  for (int i = 0; i < size[1]; i++)
  {
-  sum = sum + new_cost[pos.x + size[0] * i + size[0] * size[1] * pos.y];
-  new_cost[pos.x + size[0] * i + size[0] * size[1] * pos.y] = sum;
+  sum = sum + cost[pos.x + size[0] * i + size[0] * size[1] * pos.y];
+  cost[pos.x + size[0] * i + size[0] * size[1] * pos.y] = sum;
  }
 }

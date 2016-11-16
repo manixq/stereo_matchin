@@ -1,7 +1,4 @@
-__constant sampler_t sampler =
-  CLK_NORMALIZED_COORDS_FALSE
-| CLK_ADDRESS_CLAMP_TO_EDGE
-| CLK_FILTER_NEAREST;
+
 
 int check_similarity(image2d_t input, int2 pos, int old_one, int current_one, float4 color_data)
 {
@@ -106,3 +103,4 @@ __kernel void Cross (
     output[pos.x + dim.x * pos.y + dim.x*dim.y * 2] = (-1)*v_minus;
     output[pos.x + dim.x * pos.y + dim.x*dim.y * 3] = v_plus;
 }
+
