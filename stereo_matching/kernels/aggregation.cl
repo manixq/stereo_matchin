@@ -19,10 +19,10 @@ __kernel void Aggregation (
     for (int d = 0; d >= -60; d--)
     {  
      right_pixel = read_imagef(input_r, sampler, pos + (int2)(d, 0));
-     color_similarity_r = abs_diff((int)(10000 * left_pixel.x), (int)(10000 * right_pixel.x));
-     color_similarity_g = abs_diff((int)(10000 * left_pixel.y), (int)(10000 * right_pixel.y));
-     color_similarity_b = abs_diff((int)(10000 * left_pixel.z), (int)(10000 * right_pixel.z));
+     color_similarity_r = abs_diff((int)(1000 * left_pixel.x), (int)(1000 * right_pixel.x));
+     color_similarity_g = abs_diff((int)(1000 * left_pixel.y), (int)(1000 * right_pixel.y));
+     color_similarity_b = abs_diff((int)(1000 * left_pixel.z), (int)(1000 * right_pixel.z));
      result = color_similarity_r + color_similarity_g + color_similarity_b;
-     output_cost[pos.x + dim.x * pos.y + dim.x * dim.y * (-1) * d] = result;
+     output_cost[pos.x + dim.x * pos.y + dim.x * dim.y * (-1) * d] = (int)(result/3);
     }
 }

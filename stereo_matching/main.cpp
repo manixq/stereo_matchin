@@ -265,21 +265,18 @@ int main()
   clSetKernelArg(final_disparity, 0, sizeof(cl_mem), &disparity);
   clSetKernelArg(final_disparity, 1, sizeof(cl_mem), &cross_l);
   clSetKernelArg(final_disparity, 2, sizeof(cl_mem), &f_disparity);
-  std::cout << "set kernel";
   ErCheck(clEnqueueNDRangeKernel(queue, final_disparity, 2, nullptr, size, nullptr, 1, &event_initd, &event_disp));
-  std::cout << "enqueuereakernel";
 
-  clEnqueueReadImage(queue, disparity, CL_TRUE, origin, region, 0, 0, result[0].pixel.data(), 1, &event_initd, nullptr);
   clEnqueueReadImage(queue, f_disparity, CL_TRUE, origin, region, 0, 0, result[1].pixel.data(), 1, &event_disp, nullptr);
-
+  
   clReleaseMemObject(inputImage_l);
   clReleaseMemObject(inputImage_r);
   clReleaseMemObject(median_l);
   clReleaseMemObject(median_r);
-  clReleaseMemObject(temp_cost);
   clReleaseMemObject(cross_r);
   clReleaseMemObject(im_size);
   clReleaseMemObject(cost);
+  clReleaseMemObject(temp_cost);
   clReleaseMemObject(cross_l);
   clReleaseMemObject(disparity);
   clReleaseMemObject(f_disparity);
@@ -297,7 +294,7 @@ int main()
   clReleaseCommandQueue(queue);
   clReleaseProgram(program);
   clReleaseContext(context);
-
+  
   lodepng::encode("sukub/initial_disparity.png", result[0].pixel, result[0].width, result[0].height);
   lodepng::encode("sukub/final_disparity.png", result[1].pixel, result[1].width, result[1].height);
 
