@@ -148,7 +148,7 @@ int main()
   std::size_t vcross_size[3] = { result[0].width, result[0].height, 61 };
 
   //Reading all kernels
-  std::string kernels[11] = { 
+  std::string kernels[12] = { 
    sampler + LoadKernel("kernels/median.cl"), 
    LoadKernel("kernels/cross.cl"),
    LoadKernel("kernels/aggregation.cl"),
@@ -159,12 +159,13 @@ int main()
    LoadKernel("kernels/init_disparity.cl"),
    LoadKernel("kernels/disparity.cl"),
    LoadKernel("kernels/asw_hsupport.cl"),
-   LoadKernel("kernels/asw_vsupport.cl")
+   LoadKernel("kernels/asw_vsupport.cl"),
+   LoadKernel("kernels/asw_vcost.cl")
   };
 
   int num_kernels = sizeof(kernels) / sizeof(kernels[0]);
 
-  const char* load_kernel[11];
+  const char* load_kernel[12];
   for (int i = 0; i < num_kernels; i++)
   {
    load_kernel[i] = kernels[i].data();
@@ -187,6 +188,7 @@ int main()
   //asw refinement
   cl_kernel asw_vsupport = clCreateKernel(program, "asw_vSupport", &error);
   cl_kernel asw_hsupport = clCreateKernel(program, "asw_hSupport", &error);
+  cl_kernel asw_vcost = clCreateKernel(program, "asw_vCost", &error);
   
   cl_mem inputImage_l = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[0].width, result[0].height, 0, const_cast<unsigned char*> (result[0].pixel.data()), &error);
   cl_mem inputImage_r = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[1].width, result[1].height, 0, const_cast<unsigned char*> (result[1].pixel.data()), &error);
@@ -279,7 +281,7 @@ int main()
   clReleaseMemObject(median_l);
   clReleaseMemObject(median_r);
   clReleaseMemObject(cross_r);
-  clReleaseMemObject(im_size);
+ // clReleaseMemObject(im_size);
   clReleaseMemObject(cost);
   clReleaseMemObject(temp_cost);
   clReleaseMemObject(cross_l);
@@ -316,35 +318,55 @@ int main()
   compute_time(total_event, "\n-- - Total time in milliseconds = ");
 
   //asw refinement
-  std::size_t support_size[3] = { result[0].width, result[0].height, 33 };
+  std::size_t asw_support_size[3] = { result[0].width, result[0].height, 33 };
+  std::size_t asw_cost_size[3] = { result[0].width, result[0].height, 61 };
 
   cl_event event_supportv[2];
   cl_event event_supporth[2];
+  cl_event event_asw_cost;
 
-  cl_mem support_l = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[0].width * result[0].height * 33, nullptr, &error);
-  cl_mem support_r = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 33, nullptr, &error);
+  cl_mem vsupport_l = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[0].width * result[0].height * 33, nullptr, &error);
+  cl_mem vsupport_r = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 33, nullptr, &error);
+  cl_mem hsupport_l = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[0].width * result[0].height * 33, nullptr, &error);
+  cl_mem hsupport_r = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 33, nullptr, &error);
+  cl_mem asw_vcost_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 61, nullptr, &error);
   
-  //support region
-  
+  //support region - V
   clSetKernelArg(asw_vsupport, 0, sizeof(cl_mem), &inputImage_l);
-  clSetKernelArg(asw_vsupport, 1, sizeof(cl_mem), &support_l);
-  clEnqueueNDRangeKernel(queue, asw_vsupport, 2, nullptr, support_size, nullptr, 0, nullptr, &event_supportv[0]);
+  clSetKernelArg(asw_vsupport, 1, sizeof(cl_mem), &vsupport_l);
+  clEnqueueNDRangeKernel(queue, asw_vsupport, 3, nullptr, asw_support_size, nullptr, 0, nullptr, &event_supportv[0]);
   clSetKernelArg(asw_vsupport, 0, sizeof(cl_mem), &inputImage_r);
-  clSetKernelArg(asw_vsupport, 1, sizeof(cl_mem), &support_r);
-  clEnqueueNDRangeKernel(queue, asw_vsupport, 2, nullptr, support_size, nullptr, 0, nullptr, &event_supportv[1]);
+  clSetKernelArg(asw_vsupport, 1, sizeof(cl_mem), &vsupport_r);
+  clEnqueueNDRangeKernel(queue, asw_vsupport, 3, nullptr, asw_support_size, nullptr, 0, nullptr, &event_supportv[1]);
 
+  //support region - H
   clSetKernelArg(asw_hsupport, 0, sizeof(cl_mem), &inputImage_l);
-  clSetKernelArg(asw_hsupport, 1, sizeof(cl_mem), &support_l);
-  clEnqueueNDRangeKernel(queue, asw_hsupport, 2, nullptr, support_size, nullptr, 1, &event_supportv[0], &event_supporth[0]);
+  clSetKernelArg(asw_hsupport, 1, sizeof(cl_mem), &hsupport_l);
+  clEnqueueNDRangeKernel(queue, asw_hsupport, 3, nullptr, asw_support_size, nullptr, 1, &event_supportv[0], &event_supporth[0]);
   clSetKernelArg(asw_hsupport, 0, sizeof(cl_mem), &inputImage_r);
-  clSetKernelArg(asw_hsupport, 1, sizeof(cl_mem), &support_r);
-  clEnqueueNDRangeKernel(queue, asw_hsupport, 2, nullptr, support_size, nullptr, 1, &event_supportv[1], &event_supporth[1]);
+  clSetKernelArg(asw_hsupport, 1, sizeof(cl_mem), &hsupport_r);
+  clEnqueueNDRangeKernel(queue, asw_hsupport, 3, nullptr, asw_support_size, nullptr, 1, &event_supportv[1], &event_supporth[1]);
+
+  //cost - V
+  clSetKernelArg(asw_vcost, 0, sizeof(cl_mem), &vsupport_l);
+  clSetKernelArg(asw_vcost, 1, sizeof(cl_mem), &vsupport_r);
+  clSetKernelArg(asw_vcost, 2, sizeof(cl_mem), &hsupport_l);
+  clSetKernelArg(asw_vcost, 3, sizeof(cl_mem), &hsupport_r);
+  clSetKernelArg(asw_vcost, 4, sizeof(cl_mem), &inputImage_l);
+  clSetKernelArg(asw_vcost, 5, sizeof(cl_mem), &inputImage_r);
+  clSetKernelArg(asw_vcost, 6, sizeof(cl_mem), &asw_vcost_buffer);
+  clEnqueueNDRangeKernel(queue, asw_vcost, 3, nullptr, asw_cost_size, nullptr, 2, event_supporth, &event_asw_cost);
+
   
-  clWaitForEvents(2, event_supporth);
+  clWaitForEvents(1, &event_asw_cost);
   clReleaseMemObject(inputImage_l);
   clReleaseMemObject(inputImage_r);
-  clReleaseMemObject(support_l);
-  clReleaseMemObject(support_r);
+  clReleaseMemObject(vsupport_l);
+  clReleaseMemObject(vsupport_r);
+  clReleaseMemObject(hsupport_l);
+  clReleaseMemObject(hsupport_r);
+  clReleaseMemObject(asw_vcost_buffer);
+  clReleaseMemObject(im_size);
 
   clReleaseCommandQueue(queue);
   clReleaseProgram(program);

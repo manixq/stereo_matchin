@@ -70,5 +70,8 @@
     <None Include="kernels\asw_vsupport.cl">
       <Filter>Source Files\iterative refinement kernels</Filter>
     </None>
+    <None Include="kernels\asw_vcost.cl">
+      <Filter>Source Files\iterative refinement kernels</Filter>
+    </None>
   </ItemGroup>
 </Project>
