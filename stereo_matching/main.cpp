@@ -148,7 +148,7 @@ int main()
   std::size_t vcross_size[3] = { result[0].width, result[0].height, 61 };
 
   //Reading all kernels
-  std::string kernels[9] = { 
+  std::string kernels[11] = { 
    sampler + LoadKernel("kernels/median.cl"), 
    LoadKernel("kernels/cross.cl"),
    LoadKernel("kernels/aggregation.cl"),
@@ -157,12 +157,14 @@ int main()
    LoadKernel("kernels/integral_v.cl"),
    LoadKernel("kernels/oii_vcross.cl"),
    LoadKernel("kernels/init_disparity.cl"),
-   LoadKernel("kernels/disparity.cl")
+   LoadKernel("kernels/disparity.cl"),
+   LoadKernel("kernels/asw_hsupport.cl"),
+   LoadKernel("kernels/asw_vsupport.cl")
   };
 
   int num_kernels = sizeof(kernels) / sizeof(kernels[0]);
 
-  const char* load_kernel[9];
+  const char* load_kernel[11];
   for (int i = 0; i < num_kernels; i++)
   {
    load_kernel[i] = kernels[i].data();
@@ -172,7 +174,7 @@ int main()
   cl_program program = clCreateProgramWithSource(context, num_kernels, load_kernel, nullptr, nullptr);
   ErCheck(clBuildProgram(program, 1, &deviceIds.data()[device_id], nullptr, nullptr, nullptr));
   cl_command_queue queue = clCreateCommandQueue(context, deviceIds.data()[device_id], CL_QUEUE_PROFILING_ENABLE, &error);
-
+  //oii
   cl_kernel median = clCreateKernel(program, "Median", &error);
   cl_kernel cross = clCreateKernel(program, "Cross", &error);
   cl_kernel aggregation = clCreateKernel(program, "Aggregation", &error);
@@ -182,7 +184,10 @@ int main()
   cl_kernel oii_vcross = clCreateKernel(program, "Oii_vcross", &error);
   cl_kernel init_disparity = clCreateKernel(program, "Init_disparity", &error);
   cl_kernel final_disparity = clCreateKernel(program, "Disparity", &error);
-
+  //asw refinement
+  cl_kernel asw_vsupport = clCreateKernel(program, "asw_vSupport", &error);
+  cl_kernel asw_hsupport = clCreateKernel(program, "asw_hSupport", &error);
+  
   cl_mem inputImage_l = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[0].width, result[0].height, 0, const_cast<unsigned char*> (result[0].pixel.data()), &error);
   cl_mem inputImage_r = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[1].width, result[1].height, 0, const_cast<unsigned char*> (result[1].pixel.data()), &error);
   cl_mem median_l = clCreateImage2D(context, CL_MEM_READ_WRITE, &format, result[0].width, result[0].height, 0, nullptr, &error);
@@ -267,10 +272,10 @@ int main()
   clSetKernelArg(final_disparity, 2, sizeof(cl_mem), &f_disparity);
   ErCheck(clEnqueueNDRangeKernel(queue, final_disparity, 2, nullptr, size, nullptr, 1, &event_initd, &event_disp));
 
-  clEnqueueReadImage(queue, f_disparity, CL_TRUE, origin, region, 0, 0, result[1].pixel.data(), 1, &event_disp, nullptr);
+  clEnqueueReadImage(queue, f_disparity, CL_TRUE, origin, region, 0, 0, result[2].pixel.data(), 1, &event_disp, nullptr);
   
-  clReleaseMemObject(inputImage_l);
-  clReleaseMemObject(inputImage_r);
+  //clReleaseMemObject(inputImage_l);
+  //clReleaseMemObject(inputImage_r);
   clReleaseMemObject(median_l);
   clReleaseMemObject(median_r);
   clReleaseMemObject(cross_r);
@@ -291,12 +296,9 @@ int main()
   clReleaseKernel(init_disparity);
   clReleaseKernel(final_disparity);
 
-  clReleaseCommandQueue(queue);
-  clReleaseProgram(program);
-  clReleaseContext(context);
+ 
   
-  lodepng::encode("sukub/initial_disparity.png", result[0].pixel, result[0].width, result[0].height);
-  lodepng::encode("sukub/final_disparity.png", result[1].pixel, result[1].width, result[1].height);
+  lodepng::encode("sukub/final_disparity.png", result[2].pixel, result[1].width, result[1].height);
 
   //Get measured time data
   printf("\n\n---Results for %s: ", buffer);
@@ -312,6 +314,42 @@ int main()
   printf("\n");
   cl_event total_event[2] = { event_median[0], event_disp };
   compute_time(total_event, "\n-- - Total time in milliseconds = ");
+
+  //asw refinement
+  std::size_t support_size[3] = { result[0].width, result[0].height, 33 };
+
+  cl_event event_supportv[2];
+  cl_event event_supporth[2];
+
+  cl_mem support_l = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[0].width * result[0].height * 33, nullptr, &error);
+  cl_mem support_r = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 33, nullptr, &error);
+  
+  //support region
+  
+  clSetKernelArg(asw_vsupport, 0, sizeof(cl_mem), &inputImage_l);
+  clSetKernelArg(asw_vsupport, 1, sizeof(cl_mem), &support_l);
+  clEnqueueNDRangeKernel(queue, asw_vsupport, 2, nullptr, support_size, nullptr, 0, nullptr, &event_supportv[0]);
+  clSetKernelArg(asw_vsupport, 0, sizeof(cl_mem), &inputImage_r);
+  clSetKernelArg(asw_vsupport, 1, sizeof(cl_mem), &support_r);
+  clEnqueueNDRangeKernel(queue, asw_vsupport, 2, nullptr, support_size, nullptr, 0, nullptr, &event_supportv[1]);
+
+  clSetKernelArg(asw_hsupport, 0, sizeof(cl_mem), &inputImage_l);
+  clSetKernelArg(asw_hsupport, 1, sizeof(cl_mem), &support_l);
+  clEnqueueNDRangeKernel(queue, asw_hsupport, 2, nullptr, support_size, nullptr, 1, &event_supportv[0], &event_supporth[0]);
+  clSetKernelArg(asw_hsupport, 0, sizeof(cl_mem), &inputImage_r);
+  clSetKernelArg(asw_hsupport, 1, sizeof(cl_mem), &support_r);
+  clEnqueueNDRangeKernel(queue, asw_hsupport, 2, nullptr, support_size, nullptr, 1, &event_supportv[1], &event_supporth[1]);
+  
+  clWaitForEvents(2, event_supporth);
+  clReleaseMemObject(inputImage_l);
+  clReleaseMemObject(inputImage_r);
+  clReleaseMemObject(support_l);
+  clReleaseMemObject(support_r);
+
+  clReleaseCommandQueue(queue);
+  clReleaseProgram(program);
+  clReleaseContext(context);
+
   printf("\n\nAgain?...(y/n)  ");
   char y_or_n = 'n';  
   scanf_s(" %c", &y_or_n);

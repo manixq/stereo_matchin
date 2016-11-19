@@ -13,8 +13,11 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Source Files\kernels">
+    <Filter Include="Source Files\cross based with oii kernels">
       <UniqueIdentifier>{4c67644c-85f6-4996-a618-7376569717cd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\iterative refinement kernels">
+      <UniqueIdentifier>{d0e06c3f-f827-4ffd-83db-f5b251a2e187}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -35,31 +38,37 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="kernels\aggregation.cl">
-      <Filter>Source Files\kernels</Filter>
+      <Filter>Source Files\cross based with oii kernels</Filter>
     </None>
     <None Include="kernels\cross.cl">
-      <Filter>Source Files\kernels</Filter>
+      <Filter>Source Files\cross based with oii kernels</Filter>
     </None>
     <None Include="kernels\disparity.cl">
-      <Filter>Source Files\kernels</Filter>
+      <Filter>Source Files\cross based with oii kernels</Filter>
     </None>
     <None Include="kernels\init_disparity.cl">
-      <Filter>Source Files\kernels</Filter>
+      <Filter>Source Files\cross based with oii kernels</Filter>
     </None>
     <None Include="kernels\integral_h.cl">
-      <Filter>Source Files\kernels</Filter>
+      <Filter>Source Files\cross based with oii kernels</Filter>
     </None>
     <None Include="kernels\integral_v.cl">
-      <Filter>Source Files\kernels</Filter>
+      <Filter>Source Files\cross based with oii kernels</Filter>
     </None>
     <None Include="kernels\median.cl">
-      <Filter>Source Files\kernels</Filter>
+      <Filter>Source Files\cross based with oii kernels</Filter>
     </None>
     <None Include="kernels\oii_hcross.cl">
-      <Filter>Source Files\kernels</Filter>
+      <Filter>Source Files\cross based with oii kernels</Filter>
     </None>
     <None Include="kernels\oii_vcross.cl">
-      <Filter>Source Files\kernels</Filter>
+      <Filter>Source Files\cross based with oii kernels</Filter>
+    </None>
+    <None Include="kernels\asw_hsupport.cl">
+      <Filter>Source Files\iterative refinement kernels</Filter>
+    </None>
+    <None Include="kernels\asw_vsupport.cl">
+      <Filter>Source Files\iterative refinement kernels</Filter>
     </None>
   </ItemGroup>
 </Project>
