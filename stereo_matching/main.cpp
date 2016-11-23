@@ -330,13 +330,15 @@ int main()
   cl_event event_asw_cost;
   cl_event event_asw_costh;
   cl_event event_asw_wta;
+  cl_event event_image;
 
   cl_mem vsupport_l = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[0].width * result[0].height * 33, nullptr, &error);
   cl_mem vsupport_r = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 33, nullptr, &error);
   cl_mem hsupport_l = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[0].width * result[0].height * 33, nullptr, &error);
   cl_mem hsupport_r = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 33, nullptr, &error);
   cl_mem asw_vcost_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 61, nullptr, &error);
-  cl_mem asw_dispim = clCreateImage2D(context, CL_MEM_READ_WRITE, &format, result[0].width, result[0].height, 0, nullptr, &error);
+  cl_mem asw_left_wta = clCreateImage2D(context, CL_MEM_READ_WRITE, &format, result[0].width, result[0].height, 0, nullptr, &error);
+  cl_mem asw_right_wta = clCreateImage2D(context, CL_MEM_READ_WRITE, &format, result[0].width, result[0].height, 0, nullptr, &error);
   
   printf("\n\nasw_supV ");
   //support region - V
@@ -377,13 +379,17 @@ int main()
   clEnqueueNDRangeKernel(queue, asw_hcost, 3, nullptr, asw_cost_size, nullptr, 1, &event_asw_cost, &event_asw_costh);
   */
   clSetKernelArg(asw_disp, 0, sizeof(cl_mem), &asw_vcost_buffer);
-  clSetKernelArg(asw_disp, 1, sizeof(cl_mem), &asw_dispim);
+  clSetKernelArg(asw_disp, 1, sizeof(cl_mem), &asw_left_wta);
+  clSetKernelArg(asw_disp, 2, sizeof(cl_mem), &asw_right_wta);
   ErCheck(clEnqueueNDRangeKernel(queue, asw_disp, 2, nullptr, size, nullptr, 1, &event_asw_cost, &event_asw_wta));
 
 
 
-  clEnqueueReadImage(queue, asw_dispim, CL_TRUE, origin, region, 0, 0, result[2].pixel.data(), 1, &event_asw_wta, nullptr);
-  lodepng::encode("sukub/asw_disp.png", result[2].pixel, result[1].width, result[1].height);
+  clEnqueueReadImage(queue, asw_left_wta, CL_TRUE, origin, region, 0, 0, result[2].pixel.data(), 1, &event_asw_wta, &event_image);
+  lodepng::encode("sukub/asw_wta_l.png", result[2].pixel, result[1].width, result[1].height);
+
+  clEnqueueReadImage(queue, asw_right_wta, CL_TRUE, origin, region, 0, 0, result[2].pixel.data(), 1, &event_image, nullptr);
+  lodepng::encode("sukub/asw_wta_r.png", result[2].pixel, result[1].width, result[1].height);
   
   clReleaseMemObject(inputImage_l);
   clReleaseMemObject(inputImage_r);
@@ -392,7 +398,7 @@ int main()
   clReleaseMemObject(hsupport_l);
   clReleaseMemObject(hsupport_r);
   clReleaseMemObject(asw_vcost_buffer);
-  clReleaseMemObject(asw_dispim);
+  clReleaseMemObject(asw_left_wta);
   clReleaseMemObject(im_size);
 
   clReleaseKernel(asw_vsupport);
