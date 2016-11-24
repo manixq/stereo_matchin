@@ -161,7 +161,7 @@ int main()
    LoadKernel("kernels/asw_hsupport.cl"),
    LoadKernel("kernels/asw_vsupport.cl"),
    LoadKernel("kernels/asw_vcost.cl"),
-   LoadKernel("kernels/asw_hcost.cl"),
+   LoadKernel("kernels/asw_cost.cl"),
    LoadKernel("kernels/asw_wta.cl")
   };
 
@@ -191,7 +191,7 @@ int main()
   cl_kernel asw_vsupport = clCreateKernel(program, "asw_vSupport", &error);
   cl_kernel asw_hsupport = clCreateKernel(program, "asw_hSupport", &error);
   cl_kernel asw_vcost = clCreateKernel(program, "asw_vCost", &error);
-  cl_kernel asw_hcost = clCreateKernel(program, "asw_hCost", &error);
+  cl_kernel asw_cost = clCreateKernel(program, "asw_Cost", &error);
   cl_kernel asw_disp = clCreateKernel(program, "asw_WTA", &error);
   
   cl_mem inputImage_l = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[0].width, result[0].height, 0, const_cast<unsigned char*> (result[0].pixel.data()), &error);
@@ -332,57 +332,93 @@ int main()
   cl_event event_asw_wta;
   cl_event event_image;
 
+  cl_mem asw_cost_buffer[2];
   cl_mem vsupport_l = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[0].width * result[0].height * 33, nullptr, &error);
   cl_mem vsupport_r = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 33, nullptr, &error);
   cl_mem hsupport_l = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[0].width * result[0].height * 33, nullptr, &error);
   cl_mem hsupport_r = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 33, nullptr, &error);
-  cl_mem asw_vcost_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 61, nullptr, &error);
+  asw_cost_buffer[0] = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 61, nullptr, &error);
+  asw_cost_buffer[1] = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 61, nullptr, &error);
   cl_mem asw_left_wta = clCreateImage2D(context, CL_MEM_READ_WRITE, &format, result[0].width, result[0].height, 0, nullptr, &error);
   cl_mem asw_right_wta = clCreateImage2D(context, CL_MEM_READ_WRITE, &format, result[0].width, result[0].height, 0, nullptr, &error);
   
   printf("\n\nasw_supV ");
   //support region - V
-  clSetKernelArg(asw_vsupport, 0, sizeof(cl_mem), &inputImage_l);
-  clSetKernelArg(asw_vsupport, 1, sizeof(cl_mem), &vsupport_l);
-  clEnqueueNDRangeKernel(queue, asw_vsupport, 3, nullptr, asw_support_size, nullptr, 0, nullptr, &event_supportv[0]);
-  clSetKernelArg(asw_vsupport, 0, sizeof(cl_mem), &inputImage_r);
-  clSetKernelArg(asw_vsupport, 1, sizeof(cl_mem), &vsupport_r);
-  ErCheck(clEnqueueNDRangeKernel(queue, asw_vsupport, 3, nullptr, asw_support_size, nullptr, 0, nullptr, &event_supportv[1]));
+   clSetKernelArg(asw_vsupport, 0, sizeof(cl_mem), &inputImage_l);
+   clSetKernelArg(asw_vsupport, 1, sizeof(cl_mem), &vsupport_l);
+   clEnqueueNDRangeKernel(queue, asw_vsupport, 3, nullptr, asw_support_size, nullptr, 0, nullptr, &event_supportv[0]);
+   clSetKernelArg(asw_vsupport, 0, sizeof(cl_mem), &inputImage_r);
+   clSetKernelArg(asw_vsupport, 1, sizeof(cl_mem), &vsupport_r);
+   ErCheck(clEnqueueNDRangeKernel(queue, asw_vsupport, 3, nullptr, asw_support_size, nullptr, 0, nullptr, &event_supportv[1]));
 
-  printf("\nasw_supH ");
-  //support region - H
-  clSetKernelArg(asw_hsupport, 0, sizeof(cl_mem), &inputImage_l);
-  clSetKernelArg(asw_hsupport, 1, sizeof(cl_mem), &hsupport_l);
-  clEnqueueNDRangeKernel(queue, asw_hsupport, 3, nullptr, asw_support_size, nullptr, 1, &event_supportv[0], &event_supporth[0]);
-  clSetKernelArg(asw_hsupport, 0, sizeof(cl_mem), &inputImage_r);
-  clSetKernelArg(asw_hsupport, 1, sizeof(cl_mem), &hsupport_r);
-  ErCheck(clEnqueueNDRangeKernel(queue, asw_hsupport, 3, nullptr, asw_support_size, nullptr, 1, &event_supportv[1], &event_supporth[1]));
+   printf("\nasw_supH ");
+   //support region - H
+   clSetKernelArg(asw_hsupport, 0, sizeof(cl_mem), &inputImage_l);
+   clSetKernelArg(asw_hsupport, 1, sizeof(cl_mem), &hsupport_l);
+   clEnqueueNDRangeKernel(queue, asw_hsupport, 3, nullptr, asw_support_size, nullptr, 1, &event_supportv[0], &event_supporth[0]);
+   clSetKernelArg(asw_hsupport, 0, sizeof(cl_mem), &inputImage_r);
+   clSetKernelArg(asw_hsupport, 1, sizeof(cl_mem), &hsupport_r);
+   ErCheck(clEnqueueNDRangeKernel(queue, asw_hsupport, 3, nullptr, asw_support_size, nullptr, 1, &event_supportv[1], &event_supporth[1]));
 
-  printf("\nasw_cost ");
-  //cost - V
-  clSetKernelArg(asw_vcost, 0, sizeof(cl_mem), &vsupport_l);
-  clSetKernelArg(asw_vcost, 1, sizeof(cl_mem), &vsupport_r);
-  clSetKernelArg(asw_vcost, 2, sizeof(cl_mem), &hsupport_l);
-  clSetKernelArg(asw_vcost, 3, sizeof(cl_mem), &hsupport_r);
-  clSetKernelArg(asw_vcost, 4, sizeof(cl_mem), &inputImage_l);
-  clSetKernelArg(asw_vcost, 5, sizeof(cl_mem), &inputImage_r);
-  clSetKernelArg(asw_vcost, 6, sizeof(cl_mem), &asw_vcost_buffer);
-  ErCheck(clEnqueueNDRangeKernel(queue, asw_vcost, 3, nullptr, asw_cost_size, nullptr, 2, event_supporth, &event_asw_cost));
-  /*
-  clSetKernelArg(asw_hcost, 0, sizeof(cl_mem), &vsupport_l);
-  clSetKernelArg(asw_hcost, 1, sizeof(cl_mem), &vsupport_r);
-  clSetKernelArg(asw_hcost, 2, sizeof(cl_mem), &hsupport_l);
-  clSetKernelArg(asw_hcost, 3, sizeof(cl_mem), &hsupport_r);
-  clSetKernelArg(asw_hcost, 4, sizeof(cl_mem), &inputImage_l);
-  clSetKernelArg(asw_hcost, 5, sizeof(cl_mem), &inputImage_r);
-  clSetKernelArg(asw_hcost, 6, sizeof(cl_mem), &asw_vcost_buffer);
-  clEnqueueNDRangeKernel(queue, asw_hcost, 3, nullptr, asw_cost_size, nullptr, 1, &event_asw_cost, &event_asw_costh);
-  */
-  clSetKernelArg(asw_disp, 0, sizeof(cl_mem), &asw_vcost_buffer);
-  clSetKernelArg(asw_disp, 1, sizeof(cl_mem), &asw_left_wta);
-  clSetKernelArg(asw_disp, 2, sizeof(cl_mem), &asw_right_wta);
-  ErCheck(clEnqueueNDRangeKernel(queue, asw_disp, 2, nullptr, size, nullptr, 1, &event_asw_cost, &event_asw_wta));
+   printf("\nasw_cost ");
+   //cost - V
+   clSetKernelArg(asw_vcost, 0, sizeof(cl_mem), &vsupport_l);
+   clSetKernelArg(asw_vcost, 1, sizeof(cl_mem), &vsupport_r);
+   clSetKernelArg(asw_vcost, 2, sizeof(cl_mem), &hsupport_l);
+   clSetKernelArg(asw_vcost, 3, sizeof(cl_mem), &hsupport_r);
+   clSetKernelArg(asw_vcost, 4, sizeof(cl_mem), &inputImage_l);
+   clSetKernelArg(asw_vcost, 5, sizeof(cl_mem), &inputImage_r);
+   clSetKernelArg(asw_vcost, 6, sizeof(cl_mem), &asw_cost_buffer[0]);
+   ErCheck(clEnqueueNDRangeKernel(queue, asw_vcost, 3, nullptr, asw_cost_size, nullptr, 2, event_supporth, &event_asw_cost));
 
+   clSetKernelArg(asw_disp, 0, sizeof(cl_mem), &asw_cost_buffer[0]);
+   clSetKernelArg(asw_disp, 1, sizeof(cl_mem), &asw_left_wta);
+   clSetKernelArg(asw_disp, 2, sizeof(cl_mem), &asw_right_wta);
+   ErCheck(clEnqueueNDRangeKernel(queue, asw_disp, 2, nullptr, size, nullptr, 1, &event_asw_cost, &event_asw_wta));
+
+   clWaitForEvents(1, &event_asw_wta);
+  
+   int n = 10;
+   for (int i = 0; i < n; i++) {
+    printf("\n\nasw_supV ");
+    //support region - V
+
+    clSetKernelArg(asw_vsupport, 0, sizeof(cl_mem), &inputImage_l);
+    clSetKernelArg(asw_vsupport, 1, sizeof(cl_mem), &vsupport_l);
+    clEnqueueNDRangeKernel(queue, asw_vsupport, 3, nullptr, asw_support_size, nullptr, 0, nullptr, &event_supportv[0]);
+    clSetKernelArg(asw_vsupport, 0, sizeof(cl_mem), &inputImage_r);
+    clSetKernelArg(asw_vsupport, 1, sizeof(cl_mem), &vsupport_r);
+    ErCheck(clEnqueueNDRangeKernel(queue, asw_vsupport, 3, nullptr, asw_support_size, nullptr, 0, nullptr, &event_supportv[1]));
+
+    printf("\nasw_supH ");
+    //support region - H
+    clSetKernelArg(asw_hsupport, 0, sizeof(cl_mem), &inputImage_l);
+    clSetKernelArg(asw_hsupport, 1, sizeof(cl_mem), &hsupport_l);
+    clEnqueueNDRangeKernel(queue, asw_hsupport, 3, nullptr, asw_support_size, nullptr, 1, &event_supportv[0], &event_supporth[0]);
+    clSetKernelArg(asw_hsupport, 0, sizeof(cl_mem), &inputImage_r);
+    clSetKernelArg(asw_hsupport, 1, sizeof(cl_mem), &hsupport_r);
+    ErCheck(clEnqueueNDRangeKernel(queue, asw_hsupport, 3, nullptr, asw_support_size, nullptr, 1, &event_supportv[1], &event_supporth[1]));
+    
+    printf("\nasw_cost ");
+    //cost - V
+    clSetKernelArg(asw_cost, 0, sizeof(cl_mem), &vsupport_l);
+    clSetKernelArg(asw_cost, 1, sizeof(cl_mem), &vsupport_r);
+    clSetKernelArg(asw_cost, 2, sizeof(cl_mem), &hsupport_l);
+    clSetKernelArg(asw_cost, 3, sizeof(cl_mem), &hsupport_r);
+    clSetKernelArg(asw_cost, 4, sizeof(cl_mem), &inputImage_l);
+    clSetKernelArg(asw_cost, 5, sizeof(cl_mem), &inputImage_r);
+    clSetKernelArg(asw_cost, 6, sizeof(cl_mem), &asw_cost_buffer[i % 2]);
+    clSetKernelArg(asw_cost, 7, sizeof(cl_mem), &asw_cost_buffer[1 - i % 2]);
+    ErCheck(clEnqueueNDRangeKernel(queue, asw_cost, 3, nullptr, asw_cost_size, nullptr, 2, event_supporth, &event_asw_cost));
+    clWaitForEvents(1, &event_asw_cost);
+   
+   }
+    
+   printf("\nasw_disp ");
+   clSetKernelArg(asw_disp, 0, sizeof(cl_mem), &asw_cost_buffer[n % 2]);
+   clSetKernelArg(asw_disp, 1, sizeof(cl_mem), &asw_left_wta);
+   clSetKernelArg(asw_disp, 2, sizeof(cl_mem), &asw_right_wta);
+   ErCheck(clEnqueueNDRangeKernel(queue, asw_disp, 2, nullptr, size, nullptr, 1, &event_asw_cost, &event_asw_wta));
 
 
   clEnqueueReadImage(queue, asw_left_wta, CL_TRUE, origin, region, 0, 0, result[2].pixel.data(), 1, &event_asw_wta, &event_image);
@@ -397,7 +433,8 @@ int main()
   clReleaseMemObject(vsupport_r);
   clReleaseMemObject(hsupport_l);
   clReleaseMemObject(hsupport_r);
-  clReleaseMemObject(asw_vcost_buffer);
+  clReleaseMemObject(asw_cost_buffer[0]);
+  clReleaseMemObject(asw_cost_buffer[1]);
   clReleaseMemObject(asw_left_wta);
   clReleaseMemObject(im_size);
 

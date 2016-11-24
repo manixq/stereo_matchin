@@ -76,5 +76,8 @@
     <None Include="kernels\asw_wta.cl">
       <Filter>Source Files\iterative refinement kernels</Filter>
     </None>
+    <None Include="kernels\asw_cost.cl">
+      <Filter>Source Files\iterative refinement kernels</Filter>
+    </None>
   </ItemGroup>
 </Project>
