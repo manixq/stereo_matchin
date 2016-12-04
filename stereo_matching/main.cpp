@@ -148,7 +148,7 @@ int main()
   std::size_t vcross_size[3] = { result[0].width, result[0].height, 61 };
 
   //Reading all kernels
-  std::string kernels[14] = { 
+  std::string kernels[15] = { 
    sampler + LoadKernel("kernels/median.cl"), 
    LoadKernel("kernels/cross.cl"),
    LoadKernel("kernels/aggregation.cl"),
@@ -162,12 +162,13 @@ int main()
    LoadKernel("kernels/asw_vsupport.cl"),
    LoadKernel("kernels/asw_vcost.cl"),
    LoadKernel("kernels/asw_cost.cl"),
-   LoadKernel("kernels/asw_wta.cl")
+   LoadKernel("kernels/asw_wta.cl"),
+   LoadKernel("kernels/asw_aggr.cl")
   };
 
   int num_kernels = sizeof(kernels) / sizeof(kernels[0]);
 
-  const char* load_kernel[14];
+  const char* load_kernel[15];
   for (int i = 0; i < num_kernels; i++)
   {
    load_kernel[i] = kernels[i].data();
@@ -193,6 +194,7 @@ int main()
   cl_kernel asw_vcost = clCreateKernel(program, "asw_vCost", &error);
   cl_kernel asw_cost = clCreateKernel(program, "asw_Cost", &error);
   cl_kernel asw_disp = clCreateKernel(program, "asw_WTA", &error);
+  cl_kernel asw_aggr = clCreateKernel(program, "asw_Aggr", &error);
   
   cl_mem inputImage_l = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[0].width, result[0].height, 0, const_cast<unsigned char*> (result[0].pixel.data()), &error);
   cl_mem inputImage_r = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[1].width, result[1].height, 0, const_cast<unsigned char*> (result[1].pixel.data()), &error);
@@ -331,8 +333,10 @@ int main()
   cl_event event_asw_costh;
   cl_event event_asw_wta;
   cl_event event_image;
+  cl_event event_aggr;
 
-  cl_mem asw_cost_buffer[2];
+  cl_mem asw_cost_buffer[2]; 
+  cl_mem asw_initcost = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 61, nullptr, &error);
   cl_mem vsupport_l = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[0].width * result[0].height * 33, nullptr, &error);
   cl_mem vsupport_r = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 33, nullptr, &error);
   cl_mem hsupport_l = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[0].width * result[0].height * 33, nullptr, &error);
@@ -342,11 +346,19 @@ int main()
   cl_mem asw_left_wta = clCreateImage2D(context, CL_MEM_READ_WRITE, &format, result[0].width, result[0].height, 0, nullptr, &error);
   cl_mem asw_right_wta = clCreateImage2D(context, CL_MEM_READ_WRITE, &format, result[0].width, result[0].height, 0, nullptr, &error);
   
+
+  printf("\nAggregation cost.. ");
+  //per pixel 
+  clSetKernelArg(asw_aggr, 0, sizeof(cl_mem), &inputImage_l);
+  clSetKernelArg(asw_aggr, 1, sizeof(cl_mem), &inputImage_r);
+  clSetKernelArg(asw_aggr, 2, sizeof(cl_mem), &asw_initcost);
+  ErCheck(clEnqueueNDRangeKernel(queue, asw_aggr, 2, nullptr, size, nullptr, 0, nullptr, &event_aggr));
+
   printf("\n\nasw_supV ");
   //support region - V
    clSetKernelArg(asw_vsupport, 0, sizeof(cl_mem), &inputImage_l);
    clSetKernelArg(asw_vsupport, 1, sizeof(cl_mem), &vsupport_l);
-   clEnqueueNDRangeKernel(queue, asw_vsupport, 3, nullptr, asw_support_size, nullptr, 0, nullptr, &event_supportv[0]);
+   clEnqueueNDRangeKernel(queue, asw_vsupport, 3, nullptr, asw_support_size, nullptr, 1, &event_aggr, &event_supportv[0]);
    clSetKernelArg(asw_vsupport, 0, sizeof(cl_mem), &inputImage_r);
    clSetKernelArg(asw_vsupport, 1, sizeof(cl_mem), &vsupport_r);
    ErCheck(clEnqueueNDRangeKernel(queue, asw_vsupport, 3, nullptr, asw_support_size, nullptr, 0, nullptr, &event_supportv[1]));
@@ -368,7 +380,8 @@ int main()
    clSetKernelArg(asw_vcost, 3, sizeof(cl_mem), &hsupport_r);
    clSetKernelArg(asw_vcost, 4, sizeof(cl_mem), &inputImage_l);
    clSetKernelArg(asw_vcost, 5, sizeof(cl_mem), &inputImage_r);
-   clSetKernelArg(asw_vcost, 6, sizeof(cl_mem), &asw_cost_buffer[0]);
+   clSetKernelArg(asw_vcost, 6, sizeof(cl_mem), &asw_initcost);
+   clSetKernelArg(asw_vcost, 7, sizeof(cl_mem), &asw_cost_buffer[0]);
    ErCheck(clEnqueueNDRangeKernel(queue, asw_vcost, 3, nullptr, asw_cost_size, nullptr, 2, event_supporth, &event_asw_cost));
 
    clSetKernelArg(asw_disp, 0, sizeof(cl_mem), &asw_cost_buffer[0]);
@@ -377,8 +390,11 @@ int main()
    ErCheck(clEnqueueNDRangeKernel(queue, asw_disp, 2, nullptr, size, nullptr, 1, &event_asw_cost, &event_asw_wta));
 
    clWaitForEvents(1, &event_asw_wta);
-  
-   int n = 10;
+
+   clEnqueueReadImage(queue, asw_left_wta, CL_TRUE, origin, region, 0, 0, result[2].pixel.data(), 1, &event_asw_wta, &event_image);
+   lodepng::encode("sukub/asw_wta_first.png", result[2].pixel, result[1].width, result[1].height);
+   clWaitForEvents(1, &event_image);
+   int n = 5;
    for (int i = 0; i < n; i++) {
     printf("\n\nasw_supV ");
     //support region - V

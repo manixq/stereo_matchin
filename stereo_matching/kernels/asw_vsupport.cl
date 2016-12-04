@@ -19,10 +19,9 @@ __kernel void asw_vSupport (
     int y = clamp(pos.y + pos.z - 16, 0, dim.y - 1);
     p = read_imagef(input, sampler, (int2)(pos.x, pos.y));
     q = read_imagef(input, sampler, (int2)(pos.x, y));
-    c_diff = (-1) * distance(p, q) / 30.91f;
+    c_diff = (-1) * (fabs(p.x - q.x) + fabs(p.y - q.y) + fabs(p.z - q.z)) / 30.91f;
 
     g_dist = distance((float2)(pos.x, pos.y), (float2)(pos.x, y)) / 28.21f;
     w = exp(c_diff - g_dist);
-
     output_cost[pos.x + dim.x * pos.y + dim.x * dim.y * pos.z] = w;
 }

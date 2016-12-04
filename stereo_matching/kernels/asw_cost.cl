@@ -18,30 +18,30 @@ __kernel void asw_Cost (
     float4 q;
     float4 q_;
 
-    float c_num = 0;
-    float c_denom = 0;
-    float ww;
+    float c_num_v = 0;
+    float c_denom_v = 0;
+    float c_num_h = 0;
+    float c_denom_h = 0;
+    float ww_v;
+    float ww_h;
     for (int i = 0; i < 33; i++)
     {
      //V
-     q = read_imagef(input_l, sampler, (int2)(pos.x, clamp(pos.y + i - 16, 0, dim.y - 1)));
-     q_ = read_imagef(input_r, sampler, (int2)(max(0, pos.x - pos.z), clamp(pos.y + i - 16, 0, dim.y - 1)));
-     ww = v_support_l[pos.x + dim.x * pos.y + dim.x * dim.y * i] * v_support_r[max(0, pos.x - pos.z) + dim.x * pos.y + dim.x * dim.y * i];
+     ww_v = v_support_l[pos.x + dim.x * pos.y + dim.x * dim.y * i] * v_support_r[max(0, pos.x - pos.z) + dim.x * pos.y + dim.x * dim.y * i];
 
-     c_num += ww * old_cost[pos.x + dim.x * clamp(pos.y + i - 16, 0, dim.y - 1) + dim.x * dim.y * pos.z];
-     c_denom += ww;
+     c_num_v += ww_v * old_cost[pos.x + dim.x * clamp(pos.y + i - 16, 0, dim.y - 1) + dim.x * dim.y * pos.z];
+     c_denom_v += ww_v;
     
      for (int j = 0; j < 33; j++)
      {
       //H per every V
-      q = read_imagef(input_l, sampler, (int2)(clamp(pos.x + j - 16, 0, dim.x - 1), clamp(pos.y + i - 16, 0, dim.y - 1)));
-      q_ = read_imagef(input_r, sampler, (int2)(clamp(pos.x + j - 16 - pos.z, 0, dim.x - 1), clamp(pos.y + i - 16, 0, dim.y - 1)));
-      ww = h_support_l[pos.x + dim.x * clamp(pos.y + i - 16, 0, dim.y - 1) + dim.x * dim.y * j] * h_support_r[max(0, pos.x - pos.z) + dim.x * clamp(pos.y + i - 16, 0, dim.y - 1) + dim.x * dim.y * j];
-
-      c_num += ww * old_cost[clamp(pos.x + j - 16, 0, dim.x - 1) + dim.x * pos.y + dim.x * dim.y * pos.z];
-      c_denom += ww;
+      ww_h = h_support_l[pos.x + dim.x * clamp(pos.y + i - 16, 0, dim.y - 1) + dim.x * dim.y * j] * h_support_r[max(0, pos.x - pos.z) + dim.x * clamp(pos.y + i - 16, 0, dim.y - 1) + dim.x * dim.y * j];
+      
+      //c_num += ww_h * ww_v * input_cost[clamp(pos.x + j - 16, 0, dim.x - 1) + dim.x * clamp(pos.y + i - 16, 0, dim.y - 1) + dim.x * dim.y * pos.z];
+      c_num_h += ww_h * ww_v * old_cost[clamp(pos.x + j - 16, 0, dim.x - 1) + dim.x * clamp(pos.y + i - 16, 0, dim.y - 1) + dim.x * dim.y * pos.z];
+      c_denom_h += ww_h;
      }
     }
-
-    output_cost[pos.x + dim.x * pos.y + dim.x * dim.y * pos.z] = c_num / c_denom;
+    float result = c_num_v / c_denom_v + c_num_h / c_denom_h;
+    output_cost[pos.x + dim.x * pos.y + dim.x * dim.y * pos.z] = result;
 }
