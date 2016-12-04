@@ -29,8 +29,8 @@ __kernel void asw_Cost (
      //V
      ww_v = v_support_l[pos.x + dim.x * pos.y + dim.x * dim.y * i] * v_support_r[max(0, pos.x - pos.z) + dim.x * pos.y + dim.x * dim.y * i];
 
-     c_num_v += ww_v * old_cost[pos.x + dim.x * clamp(pos.y + i - 16, 0, dim.y - 1) + dim.x * dim.y * pos.z];
-     c_denom_v += ww_v;
+     c_num_v +=  old_cost[pos.x + dim.x * clamp(pos.y + i - 16, 0, dim.y - 1) + dim.x * dim.y * pos.z];
+     //c_denom_v += ww_v;
     
      for (int j = 0; j < 33; j++)
      {
@@ -42,6 +42,6 @@ __kernel void asw_Cost (
       c_denom_h += ww_h;
      }
     }
-    float result = c_num_v / c_denom_v + c_num_h / c_denom_h;
+    float result = c_num_v/33  + c_num_h / c_denom_h;
     output_cost[pos.x + dim.x * pos.y + dim.x * dim.y * pos.z] = result;
 }

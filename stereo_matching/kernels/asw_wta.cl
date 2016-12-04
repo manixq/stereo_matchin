@@ -1,3 +1,9 @@
+//p1 is [d1, x1] where d1 is depth
+int bresenham(int2 p1, int2 p2, int x)
+{
+ int y = (p1.x - p2.x) / (p1.y - p2.y) * (x - p2.y) + p2.x;
+ return y;
+}
 
 
 __kernel void asw_WTA (
