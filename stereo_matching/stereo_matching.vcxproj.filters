@@ -82,5 +82,14 @@
     <None Include="kernels\asw_aggr.cl">
       <Filter>Source Files\iterative refinement kernels</Filter>
     </None>
+    <None Include="kernels\asw_refinement_v.cl">
+      <Filter>Source Files\iterative refinement kernels</Filter>
+    </None>
+    <None Include="kernels\asw_refinement_h.cl">
+      <Filter>Source Files\iterative refinement kernels</Filter>
+    </None>
+    <None Include="kernels\asw_wta_ref.cl">
+      <Filter>Source Files\iterative refinement kernels</Filter>
+    </None>
   </ItemGroup>
 </Project>

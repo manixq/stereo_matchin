@@ -8,11 +8,13 @@ int bresenham(int2 p1, int2 p2, int x)
 }
 
 
-__kernel void asw_WTA (
- __global float* output_cost,
+__kernel void asw_WTA_REF (
+ __global float* raw_d,
+ __global float* refinement,
  __write_only image2d_t output_l,
  __write_only image2d_t output_r,
- __global float* out_d
+ __global float* out_d,
+ __global float* out_fractional
  )
 {
     const int2 pos = {get_global_id(0), get_global_id(1)};

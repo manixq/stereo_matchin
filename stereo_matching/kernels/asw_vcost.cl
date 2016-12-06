@@ -12,7 +12,6 @@ __kernel void asw_vCost (
  )
 {
  //NAJPIERW KOSZT PER PUNKTY, DOPIERO POTEM LACZYMY KOSZT + SUPPORT AREAS
-   //x_width, y_height, z_support_window( <-16,16>\{0} )
     const int3 pos = {get_global_id(0), get_global_id(1), get_global_id(2)};
     const int2 dim = get_image_dim(input_l);
 
@@ -32,7 +31,7 @@ __kernel void asw_vCost (
      ww_v = v_support_l[pos.x + dim.x * pos.y + dim.x * dim.y * i] * v_support_r[max(0, pos.x - pos.z) + dim.x * pos.y + dim.x * dim.y * i];//- pos.z
      //verticals are just summed up coz it was explained like that in IEE article
      c_num_v +=  input_cost[pos.x + dim.x * clamp(pos.y + i - 16, 0, dim.y - 1) + dim.x * dim.y * pos.z];
-    // c_denom_v += ww_v;
+     //c_denom_v += ww_v;
     // printf("ww: %f\n",ww);
     // printf("cost: %f\n", input_cost[pos.x + dim.x * clamp(pos.y + i - 16, 0, dim.y - 1) + dim.x * dim.y * pos.z]);
      for (int j = 0; j < 33; j++)
