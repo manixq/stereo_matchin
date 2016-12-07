@@ -2,17 +2,16 @@
 float supp_v(float4 p, float4 q, int2 pos, int y)
 {
  //SAD
- c_diff = (-1) * (fabs(p.x - q.x) + fabs(p.y - q.y) + fabs(p.z - q.z)) / 300.91f;
+ float c_diff = (-1) * (fabs(p.x - q.x) + fabs(p.y - q.y) + fabs(p.z - q.z)) / 10.94f;
 
- g_dist = distance((float2)(pos.x, pos.y), (float2)(pos.x, y)) / 280.21f;
- w = exp(c_diff - g_dist);
+ float g_dist = distance((float2)(pos.x, pos.y), (float2)(pos.x, y)) / 118.78f;
+ float w = exp(c_diff - g_dist);
  return w;
 }
 
 //for every pixel p(x,y)
 __kernel void asw_ref_v (
  __read_only image2d_t input,
- __global float* input_cost,
  __global float* input_est,
  __global float* output_REF
  )
@@ -26,12 +25,14 @@ __kernel void asw_ref_v (
     float c_denom_v = 0; 
     float ww_v = 0;
     float F = 0;
-
+    float4 p = read_imagef(input, sampler, (int2)(pos.x, pos.y));
+    float4 q;
     for (int i = 0; i < 33; i++)
     {
      //V
      y = clamp(pos.y + i - 16, 0, dim.y-1);
-     ww_v = supp_v(read_imagef(input, sampler, (int2)(pos.x, pos.y)), read_imagef(input, sampler, (int2)(pos.x, y)), y);
+     q = read_imagef(input, sampler, (int2)(pos.x, y));
+     ww_v = supp_v(p, q, (int2)(pos.x, pos.y), y);
      F = (input_est[pos.x + dim.x * y + dim.x * dim.y * 2] - input_est[pos.x + dim.x * y + dim.x * dim.y * 1]) / input_est[pos.x + dim.x * y + dim.x * dim.y * 2];
 
      c_num_v += ww_v * F * input_est[pos.x + dim.x * y];

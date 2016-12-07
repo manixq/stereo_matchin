@@ -1,4 +1,5 @@
 //p1 is [d1, x1] where d1 is depth
+/*
 int bresenham(int2 p1, int2 p2, int x)
 {
  int y = p1.x;
@@ -6,7 +7,7 @@ int bresenham(int2 p1, int2 p2, int x)
   y = (p1.x - p2.x) / (p1.y - p2.y) * (x - p2.y) + p2.x;
  return y;
 }
-
+*/
 
 __kernel void asw_WTA (
  __global float* output_cost,
@@ -15,7 +16,7 @@ __kernel void asw_WTA (
  )
 {
     const int2 pos = {get_global_id(0), get_global_id(1)};
-    const int2 dim = get_image_dim(output_l);
+    const int2 dim = get_image_dim(output);
 
     float current_cost = output_cost[pos.x + dim.x * pos.y];
     float last_current_cost = output_cost[pos.x + dim.x * pos.y];
@@ -32,7 +33,7 @@ __kernel void asw_WTA (
      temp = output_cost[pos.x + dim.x * pos.y + dim.x * dim.y * i];
      last_current_cost = select(last_current_cost, current_cost, isless(temp, current_cost));
      min_d = select(min_d, i, isless(temp, current_cost));
-     current_cost = select(current_cost, last_current_cost, isless(temp, current_cost));
+     current_cost = select(current_cost, temp, isless(temp, current_cost));
     }
 
     //from d = zero or from  d = dminR??

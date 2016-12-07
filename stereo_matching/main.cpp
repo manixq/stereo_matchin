@@ -148,8 +148,8 @@ int main()
   std::size_t vcross_size[3] = { result[0].width, result[0].height, 61 };
 
   //Reading all kernels
-  std::string kernels[15] = { 
-   sampler + LoadKernel("kernels/median.cl"), 
+  std::string kernels[18] = {
+   sampler + LoadKernel("kernels/median.cl"),
    LoadKernel("kernels/cross.cl"),
    LoadKernel("kernels/aggregation.cl"),
    LoadKernel("kernels/integral_h.cl"),
@@ -163,12 +163,15 @@ int main()
    LoadKernel("kernels/asw_vcost.cl"),
    LoadKernel("kernels/asw_cost.cl"),
    LoadKernel("kernels/asw_wta.cl"),
-   LoadKernel("kernels/asw_aggr.cl")
+   LoadKernel("kernels/asw_aggr.cl"),
+   LoadKernel("kernels/asw_refinement_v.cl"),
+   LoadKernel("kernels/asw_refinement_h.cl"),
+   LoadKernel("kernels/asw_wta_ref.cl")
   };
 
   int num_kernels = sizeof(kernels) / sizeof(kernels[0]);
 
-  const char* load_kernel[15];
+  const char* load_kernel[18];
   for (int i = 0; i < num_kernels; i++)
   {
    load_kernel[i] = kernels[i].data();
@@ -195,7 +198,10 @@ int main()
   cl_kernel asw_cost = clCreateKernel(program, "asw_Cost", &error);
   cl_kernel asw_disp = clCreateKernel(program, "asw_WTA", &error);
   cl_kernel asw_aggr = clCreateKernel(program, "asw_Aggr", &error);
-  
+  cl_kernel asw_ref_v = clCreateKernel(program, "asw_ref_v", &error);
+  cl_kernel asw_ref_h = clCreateKernel(program, "asw_ref_h", &error);
+  cl_kernel asw_wta_ref = clCreateKernel(program, "asw_WTA_REF", &error);
+
   cl_mem inputImage_l = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[0].width, result[0].height, 0, const_cast<unsigned char*> (result[0].pixel.data()), &error);
   cl_mem inputImage_r = clCreateImage2D(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format, result[1].width, result[1].height, 0, const_cast<unsigned char*> (result[1].pixel.data()), &error);
   cl_mem median_l = clCreateImage2D(context, CL_MEM_READ_WRITE, &format, result[0].width, result[0].height, 0, nullptr, &error);
@@ -334,6 +340,9 @@ int main()
   cl_event event_asw_wta;
   cl_event event_image;
   cl_event event_aggr;
+  cl_event event_vreff_l;
+  cl_event event_hreff_l;
+  cl_event event_wta_ref_l;
 
   cl_mem asw_cost_buffer[2]; 
   cl_mem asw_initcost = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 61, nullptr, &error);
@@ -345,7 +354,10 @@ int main()
   asw_cost_buffer[1] = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 61, nullptr, &error);
   cl_mem asw_left_wta = clCreateImage2D(context, CL_MEM_READ_WRITE, &format, result[0].width, result[0].height, 0, nullptr, &error);
   cl_mem asw_right_wta = clCreateImage2D(context, CL_MEM_READ_WRITE, &format, result[0].width, result[0].height, 0, nullptr, &error);
-  cl_mem asw_d = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 4, nullptr, &error);
+  cl_mem asw_d = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 3, nullptr, &error);
+  cl_mem asw_vref_l = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 2, nullptr, &error);
+  cl_mem asw_href_l = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 2, nullptr, &error);
+  cl_mem asw_wta_ref_l = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 3, nullptr, &error);
   
 
   printf("\nAggregation cost.. ");
@@ -387,8 +399,8 @@ int main()
 
    clSetKernelArg(asw_disp, 0, sizeof(cl_mem), &asw_cost_buffer[0]);
    clSetKernelArg(asw_disp, 1, sizeof(cl_mem), &asw_left_wta);
-   clSetKernelArg(asw_disp, 2, sizeof(cl_mem), &asw_right_wta);
-   clSetKernelArg(asw_disp, 3, sizeof(cl_mem), &asw_d);
+  // clSetKernelArg(asw_disp, 2, sizeof(cl_mem), &asw_right_wta);
+   clSetKernelArg(asw_disp, 2, sizeof(cl_mem), &asw_d);
    ErCheck(clEnqueueNDRangeKernel(queue, asw_disp, 2, nullptr, size, nullptr, 1, &event_asw_cost, &event_asw_wta));
 
    clWaitForEvents(1, &event_asw_wta);
@@ -397,7 +409,7 @@ int main()
    lodepng::encode("sukub/asw_wta_first.png", result[2].pixel, result[1].width, result[1].height);
    clWaitForEvents(1, &event_image);
    
-   int n = 5;
+   int n = 1;
    for (int i = 0; i < n; i++) {    
     printf("\nasw_cost ");
     //cost - V
@@ -416,16 +428,33 @@ int main()
    printf("\nasw_disp ");
    clSetKernelArg(asw_disp, 0, sizeof(cl_mem), &asw_cost_buffer[n % 2]);
    clSetKernelArg(asw_disp, 1, sizeof(cl_mem), &asw_left_wta);
-   clSetKernelArg(asw_disp, 2, sizeof(cl_mem), &asw_right_wta);
-   clSetKernelArg(asw_disp, 3, sizeof(cl_mem), &asw_d);
+  // clSetKernelArg(asw_disp, 2, sizeof(cl_mem), &asw_right_wta);
+   clSetKernelArg(asw_disp, 2, sizeof(cl_mem), &asw_d);
    ErCheck(clEnqueueNDRangeKernel(queue, asw_disp, 2, nullptr, size, nullptr, 1, &event_asw_cost, &event_asw_wta));
-
 
   clEnqueueReadImage(queue, asw_left_wta, CL_TRUE, origin, region, 0, 0, result[2].pixel.data(), 1, &event_asw_wta, &event_image);
   lodepng::encode("sukub/asw_wta_l.png", result[2].pixel, result[1].width, result[1].height);
 
-  clEnqueueReadImage(queue, asw_right_wta, CL_TRUE, origin, region, 0, 0, result[2].pixel.data(), 1, &event_image, nullptr);
-  lodepng::encode("sukub/asw_wta_r.png", result[2].pixel, result[1].width, result[1].height);
+  clSetKernelArg(asw_ref_v, 0, sizeof(cl_mem), &asw_left_wta);
+  clSetKernelArg(asw_ref_v, 1, sizeof(cl_mem), &asw_d);
+  clSetKernelArg(asw_ref_v, 2, sizeof(cl_mem), &asw_vref_l);
+  ErCheck(clEnqueueNDRangeKernel(queue, asw_ref_v, 2, nullptr, size, nullptr, 1, &event_image, &event_vreff_l));
+
+  clSetKernelArg(asw_ref_h, 0, sizeof(cl_mem), &asw_left_wta);
+  clSetKernelArg(asw_ref_h, 1, sizeof(cl_mem), &asw_d);
+  clSetKernelArg(asw_ref_h, 2, sizeof(cl_mem), &asw_vref_l);
+  clSetKernelArg(asw_ref_h, 3, sizeof(cl_mem), &asw_href_l);
+  ErCheck(clEnqueueNDRangeKernel(queue, asw_ref_h, 2, nullptr, size, nullptr, 1, &event_vreff_l, &event_hreff_l));
+
+  printf("\nasw_ref_wta ");
+  clSetKernelArg(asw_wta_ref, 0, sizeof(cl_mem), &asw_initcost);
+  clSetKernelArg(asw_wta_ref, 1, sizeof(cl_mem), &asw_href_l);
+  clSetKernelArg(asw_wta_ref, 2, sizeof(cl_mem), &asw_left_wta);
+  clSetKernelArg(asw_wta_ref, 3, sizeof(cl_mem), &asw_wta_ref_l);
+  ErCheck(clEnqueueNDRangeKernel(queue, asw_wta_ref, 2, nullptr, size, nullptr, 1, &event_hreff_l, &event_wta_ref_l));
+  
+  clEnqueueReadImage(queue, asw_left_wta, CL_TRUE, origin, region, 0, 0, result[2].pixel.data(), 1, &event_image, nullptr);
+  lodepng::encode("sukub/asw_wta_ref_l.png", result[2].pixel, result[1].width, result[1].height);
   
   
   clReleaseMemObject(inputImage_l);
