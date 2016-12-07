@@ -10,8 +10,7 @@ int bresenham(int2 p1, int2 p2, int x)
 
 __kernel void asw_WTA (
  __global float* output_cost,
- __write_only image2d_t output_l,
- __write_only image2d_t output_r,
+ __write_only image2d_t output,
  __global float* out_d
  )
 {
@@ -19,19 +18,21 @@ __kernel void asw_WTA (
     const int2 dim = get_image_dim(output_l);
 
     float current_cost = output_cost[pos.x + dim.x * pos.y];
-    float temp;
+    float last_current_cost = output_cost[pos.x + dim.x * pos.y];
     int d_r = 0;    
     int min_d = 0;
 
-    int last_min = 0;
+    int last_min = 0.01;
     int last_min_r = 0;
 
-    for (int i = 0; i < 61; i++)
+    float temp;
+
+    for (int i = 1; i < 61; i++)
     {
      temp = output_cost[pos.x + dim.x * pos.y + dim.x * dim.y * i];
-     last_min = select(last_min, min_d, isless(temp, current_cost));
+     last_current_cost = select(last_current_cost, current_cost, isless(temp, current_cost));
      min_d = select(min_d, i, isless(temp, current_cost));
-     current_cost = select(current_cost, temp, isless(temp, current_cost));
+     current_cost = select(current_cost, last_current_cost, isless(temp, current_cost));
     }
 
     //from d = zero or from  d = dminR??
@@ -47,7 +48,7 @@ __kernel void asw_WTA (
      current_cost = select(current_cost, temp, isless(temp, current_cost));
     }
     */
-
+    /*
     int b = 0;
     d_r = min_d;
     int min_d_r = min_d;
@@ -55,20 +56,21 @@ __kernel void asw_WTA (
     for (int i = 0; i < d_r; i++)
     {
      b = bresenham((int2)(0, pos.x - d_r), (int2)(min_d, pos.x), max(0, pos.x - i)); //d_xr instead of 0
-     temp = output_cost[max(0, pos.x - i) + dim.x * pos.y + dim.x * dim.y * b];
-     last_min_r = select(last_min_r, min_d_r, isless(temp, current_cost));
-     min_d_r = select(min_d_r, b, isless(temp, current_cost));
-     current_cost = select(current_cost, temp, isless(temp, current_cost));
+     last_current_cost = output_cost[max(0, pos.x - i) + dim.x * pos.y + dim.x * dim.y * b];
+     last_min_r = select(last_min_r, min_d_r, isless(last_current_cost, current_cost));
+     min_d_r = select(min_d_r, b, isless(last_current_cost, current_cost));
+     current_cost = select(current_cost, last_current_cost, isless(last_current_cost, current_cost));
     }
     
-
-    float result_l = (float)(min_d) / 60.0f;
-    float result_r = (float)(min_d_r) / 60.0f;
-    write_imagef(output_r, (int2)(pos.x, pos.y), (float4)(result_r, result_r, result_r, 1.0f));
-    write_imagef(output_l, (int2)(pos.x, pos.y), (float4)(result_l, result_l, result_l, 1.0f));
+    */
+    float result = (float)(min_d) / 60.0f;
+   // float result_r = (float)(min_d_r) / 60.0f;
+   // write_imagef(output_r, (int2)(pos.x, pos.y), (float4)(result_r, result_r, result_r, 1.0f));
+    write_imagef(output, (int2)(pos.x, pos.y), (float4)(result, result, result, 1.0f));
     out_d[pos.x + dim.x * pos.y ] = min_d;
-    out_d[pos.x + dim.x * pos.y + dim.x * dim.y * 1] = min_d_r;
+    out_d[pos.x + dim.x * pos.y + dim.x * dim.y * 1] = current_cost;//min_d_r;
+    out_d[pos.x + dim.x * pos.y + dim.x * dim.y * 2] = last_current_cost;
     //second min
-    out_d[pos.x + dim.x * pos.y + dim.x * dim.y * 2] = last_min;
-    out_d[pos.x + dim.x * pos.y + dim.x * dim.y * 3] = last_min_r;
+  //  out_d[pos.x + dim.x * pos.y + dim.x * dim.y * 2] = last_min;
+   // out_d[pos.x + dim.x * pos.y + dim.x * dim.y * 3] = last_min_r;
 }

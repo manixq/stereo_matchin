@@ -1,43 +1,46 @@
 
+float supp_h(float4 p, float4 q, int2 pos, int x)
+{
+ //SAD
+ c_diff = (-1) * (fabs(p.x - q.x) + fabs(p.y - q.y) + fabs(p.z - q.z)) / 300.91f;
 
-//SUPPORT FUNCTION - DO IT YOURSELF
+ g_dist = distance((float2)(pos.x, pos.y), (float2)(x, pos.y)) / 28.21f;
+ w = exp(c_diff - g_dist);
+ return w;
+}
 
 //for every pixel p(x,y)
 __kernel void asw_ref_h (
-	__global float* v_support_l,
- __global float* v_support_r,
- __global float* h_support_l,
- __global float* h_support_r,
- __read_only image2d_t input_l,
- __read_only image2d_t input_r,
+ __read_only image2d_t input,
+ __global float* input_cost,
  __global float* input_est,
+ __global float* input_REF,
  __global float* output_REF
  )
 {
- //NAJPIERW KOSZT PER PUNKTY, DOPIERO POTEM LACZYMY KOSZT + SUPPORT AREAS
-   //x_width, y_height, z_support_window( <-16,16>\{0} )
+   //x_width, y_height
     const int3 pos = {get_global_id(0), get_global_id(1), get_global_id(2)};
-    const int2 dim = get_image_dim(input_l);
+    const int2 dim = get_image_dim(input);
 
-    float4 q;
-    float4 q_;
-
+    int x = 0;
     float c_num_h = 0;
     float c_denom_h = 0;
     float ww_h;
     float F;
+
     for (int i = 0; i < 33; i++)
     {
-     //V
-    
-     ww_h = h_support_l[pos.x + dim.x * pos.y + dim.x * dim.y * i];
-     F = input_est[pos.x + dim.x * clamp(pos.y + i - 16, 0, dim.y - 1) + dim.x * dim.y] / input_est[pos.x + dim.x * clamp(pos.y + i - 16, 0, dim.y - 1)];
-     //here input est is vertical refinement result
-     c_num_h += ww_h * F * input_est[pos.x + dim.x * clamp(pos.y + i - 16, 0, dim.y - 1)];
-     c_denom_h += ww_h * F;
-    
+     //H
+     x = clamp(pos.x + i - 16, 0 dim.x - 1);
+     ww_h = supp_h(read_imagef(input, sampler, (int2)(pos.x, pos.y)), read_imagef(input, sampler, (int2)(x, pos.y)), x);
+     F = (input_est[pos.x + dim.x * y + dim.x * dim.y * 2] - input_est[pos.x + dim.x * y + dim.x * dim.y * 1]) / input_est[pos.x + dim.x * y + dim.x * dim.y * 2];
+     //here input ref is vertical refinement result
+     c_num_h += ww_h * F * input_REF[x + dim.x * pos.y] * input_REF[x + dim.x * pos.y + dim.x * dim.y];
+     c_denom_h += ww_h * F * input_REF[x + dim.x * pos.y];   
     }
+
     float result = c_num_h / c_denom_h;
    // printf("ww %f \n",ww);
-    output_cost[pos.x + dim.x * pos.y + dim.x * dim.y * pos.z] = result;
+    output_REF[pos.x + dim.x * pos.y] = result;
+    output_REF[pos.x + dim.x * pos.y + dim.x * dim.y] = c_denom_h;
 }
