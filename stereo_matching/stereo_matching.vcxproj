@@ -177,6 +177,7 @@
     <None Include="kernels\asw_vsupport.cl" />
     <None Include="kernels\asw_wta.cl" />
     <None Include="kernels\asw_wta_ref.cl" />
+    <None Include="kernels\consist.cl" />
     <None Include="kernels\cross.cl" />
     <None Include="kernels\disparity.cl" />
     <None Include="kernels\init_disparity.cl" />

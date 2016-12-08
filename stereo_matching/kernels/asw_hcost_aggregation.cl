@@ -44,11 +44,12 @@ __kernel void asw_hCostAggregation(
   //tu tez razy input_cost?????
   c_num_h += ww_h * ww_h_  * denom_v[x + dim.x * pos.y + dim.x * dim.y * pos.z] * input_cost[x + dim.x * pos.y + dim.x * dim.y * pos.z];
   //dodac??
-  c_num_h += vertical_cost[x + dim.x * pos.y + dim.x * dim.y * pos.z];
+  c_num_h += vertical_cost[pos.x + dim.x * pos.y + dim.x * dim.y * pos.z];
   c_denom_h += ww_h * ww_h_ * denom_v[x + dim.x * pos.y + dim.x * dim.y * pos.z];
 
  }
- float result = c_num_h / c_denom_h ;
+ float result = c_num_h / c_denom_h;
  //width height depth
- output_cost[pos.x + dim.x * pos.y + dim.x * dim.y * pos.z] = result;
+ //dodanie init raw_d polepsza
+ output_cost[pos.x + dim.x * pos.y + dim.x * dim.y * pos.z] = (3*result + init[pos.x + dim.x * pos.y + dim.x * dim.y * pos.z])/4;
 }

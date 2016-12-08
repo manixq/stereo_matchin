@@ -97,5 +97,8 @@
     <None Include="kernels\asw_vcost_aggregation.cl">
       <Filter>Source Files\iterative refinement kernels</Filter>
     </None>
+    <None Include="kernels\consist.cl">
+      <Filter>Source Files\iterative refinement kernels</Filter>
+    </None>
   </ItemGroup>
 </Project>

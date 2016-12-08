@@ -1,5 +1,5 @@
 //p1 is [d1, x1] where d1 is depth
-/*
+
 int bresenham(int2 p1, int2 p2, int x)
 {
  int y = p1.x;
@@ -7,13 +7,15 @@ int bresenham(int2 p1, int2 p2, int x)
   y = (p1.x - p2.x) / (p1.y - p2.y) * (x - p2.y) + p2.x;
  return y;
 }
-*/
+
 
 __kernel void asw_WTA (
  __global float* output_cost,
  __global float* initcost,
  __write_only image2d_t output,
- __global float* out_d
+ __global float* out_d,
+ __write_only image2d_t output_target,
+ __global float* out_d_target
  )
 {
     const int2 pos = {get_global_id(0), get_global_id(1)};
@@ -51,28 +53,35 @@ __kernel void asw_WTA (
      current_cost = select(current_cost, temp, isless(temp, current_cost));
     }
     */
-    /*
+    
     int b = 0;
     d_r = min_d;
     int min_d_r = min_d;
-    current_cost = output_cost[max(0, pos.x - d_r) + dim.x * pos.y];
+    float current_cost_target = output_cost[max(0, pos.x - d_r) + dim.x * pos.y];
+    float last_current_cost_target = current_cost_target;
     for (int i = 0; i < d_r; i++)
     {
      b = bresenham((int2)(0, pos.x - d_r), (int2)(min_d, pos.x), max(0, pos.x - i)); //d_xr instead of 0
-     last_current_cost = output_cost[max(0, pos.x - i) + dim.x * pos.y + dim.x * dim.y * b];
-     last_min_r = select(last_min_r, min_d_r, isless(last_current_cost, current_cost));
-     min_d_r = select(min_d_r, b, isless(last_current_cost, current_cost));
-     current_cost = select(current_cost, last_current_cost, isless(last_current_cost, current_cost));
+     last_current_cost_target = output_cost[max(0, pos.x - i) + dim.x * pos.y + dim.x * dim.y * b];
+     last_min_r = select(last_min_r, min_d_r, isless(last_current_cost_target, current_cost_target));
+     min_d_r = select(min_d_r, b, isless(last_current_cost_target, current_cost_target));
+     current_cost_target = select(current_cost_target, last_current_cost_target, isless(last_current_cost_target, current_cost_target));
     }
     
-    */
+    
     float result = (float)(min_d) / 60.0f;
+    float result_target = (float)(min_d_r) / 60.0f;
    // float result_r = (float)(min_d_r) / 60.0f;
    // write_imagef(output_r, (int2)(pos.x, pos.y), (float4)(result_r, result_r, result_r, 1.0f));
     write_imagef(output, (int2)(pos.x, pos.y), (float4)(result, result, result, 1.0f));
+    write_imagef(output_target, (int2)(pos.x, pos.y), (float4)(result_target, result_target, result_target, 1.0f));
     out_d[pos.x + dim.x * pos.y ] = min_d;
     out_d[pos.x + dim.x * pos.y + dim.x * dim.y * 1] = current_cost;//min_d_r;
     out_d[pos.x + dim.x * pos.y + dim.x * dim.y * 2] = last_current_cost;
+
+    out_d_target[pos.x + dim.x * pos.y] = min_d_r;
+    out_d_target[pos.x + dim.x * pos.y + dim.x * dim.y * 1] = current_cost_target;//min_d_r;
+    out_d_target[pos.x + dim.x * pos.y + dim.x * dim.y * 2] = last_current_cost_target;
     //second min
   //  out_d[pos.x + dim.x * pos.y + dim.x * dim.y * 2] = last_min;
    // out_d[pos.x + dim.x * pos.y + dim.x * dim.y * 3] = last_min_r;

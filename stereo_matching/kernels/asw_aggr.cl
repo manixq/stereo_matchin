@@ -17,6 +17,7 @@ __kernel void asw_Aggr (
     {  
      right_pixel = read_imagef(input_r, sampler, pos + (int2)(d, 0));
      result = min(fabs(left_pixel.x - right_pixel.x) + fabs(left_pixel.y - right_pixel.y) + fabs(left_pixel.z - right_pixel.z), 0.10f);
+
      output_cost[pos.x + dim.x * pos.y + dim.x * dim.y * (-1) * d] = result;
     }
 }
