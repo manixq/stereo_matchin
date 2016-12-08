@@ -12,16 +12,11 @@ __kernel void asw_Aggr (
     float4 left_pixel = read_imagef(input_l, sampler, pos);
     float4 right_pixel;
 
-    int color_similarity_r;
-    int color_similarity_g;
-    int color_similarity_b;
     float result;
-    for (int d = 0; d >= -60; d--)
+    for (int d = 0; d > -61; d--)
     {  
      right_pixel = read_imagef(input_r, sampler, pos + (int2)(d, 0));
-     //result = distance(left_pixel.xyz, right_pixel.xyz);
-     //result = fabs(length(left_pixel.xyz) - length(right_pixel.xyz));
-     result = fabs(left_pixel.x - right_pixel.x) + fabs(left_pixel.y - right_pixel.y) + fabs(left_pixel.z - right_pixel.z);
+     result = min(fabs(left_pixel.x - right_pixel.x) + fabs(left_pixel.y - right_pixel.y) + fabs(left_pixel.z - right_pixel.z), 0.10f);
      output_cost[pos.x + dim.x * pos.y + dim.x * dim.y * (-1) * d] = result;
     }
 }

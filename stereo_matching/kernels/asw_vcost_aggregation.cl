@@ -5,6 +5,7 @@ float supp_vv(float4 p, float4 q, int2 pos, int y)
  float c_diff = (-1) * (fabs(p.x - q.x) + fabs(p.y - q.y) + fabs(p.z - q.z)) / 30.91f;
 
  float g_dist = distance((float2)(pos.x, pos.y), (float2)(pos.x, y)) / 28.21f;
+
  float w = exp(c_diff - g_dist);
  return w;
 }
@@ -13,6 +14,7 @@ __kernel void asw_vCostAggregation (
  __read_only image2d_t input_r,
  __global float* input_cost,
  __global float* output_denom,
+ __global float* init,
  __global float* output_cost
  )
 {

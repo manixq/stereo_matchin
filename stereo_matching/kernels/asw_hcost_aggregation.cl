@@ -11,6 +11,7 @@ __kernel void asw_hCostAggregation(
  __read_only image2d_t input_l,
  __read_only image2d_t input_r,
  __global float* input_cost,
+ __global float* init,
  __global float* vertical_cost,
  __global float* denom_v,
  __global float* output_cost
@@ -41,10 +42,13 @@ __kernel void asw_hCostAggregation(
   ww_h_ = supp_hh(p_, q_, (int2)(min(pos.x - pos.z, 0), pos.y), min(x - pos.z, 0));
 
   //tu tez razy input_cost?????
-  c_num_h += ww_h * ww_h_  * vertical_cost[x + dim.x * pos.y + dim.x * dim.y * pos.z];//* input_cost[x + dim.x * pos.y + dim.x * dim.y * pos.z]
-  c_denom_h += ww_h * ww_h_ ;//* denom_v[x + dim.x * pos.y + dim.x * dim.y * pos.z]
+  c_num_h += ww_h * ww_h_  * denom_v[x + dim.x * pos.y + dim.x * dim.y * pos.z] * input_cost[x + dim.x * pos.y + dim.x * dim.y * pos.z];
+  //dodac??
+  c_num_h += vertical_cost[x + dim.x * pos.y + dim.x * dim.y * pos.z];
+  c_denom_h += ww_h * ww_h_ * denom_v[x + dim.x * pos.y + dim.x * dim.y * pos.z];
 
  }
- float result = c_num_h / c_denom_h;
+ float result = c_num_h / c_denom_h ;
+ //width height depth
  output_cost[pos.x + dim.x * pos.y + dim.x * dim.y * pos.z] = result;
 }
