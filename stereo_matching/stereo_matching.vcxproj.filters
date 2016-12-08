@@ -91,5 +91,11 @@
     <None Include="kernels\asw_wta_ref.cl">
       <Filter>Source Files\iterative refinement kernels</Filter>
     </None>
+    <None Include="kernels\asw_hcost_aggregation.cl">
+      <Filter>Source Files\iterative refinement kernels</Filter>
+    </None>
+    <None Include="kernels\asw_vcost_aggregation.cl">
+      <Filter>Source Files\iterative refinement kernels</Filter>
+    </None>
   </ItemGroup>
 </Project>

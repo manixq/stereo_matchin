@@ -168,10 +168,12 @@
     <None Include="kernels\aggregation.cl" />
     <None Include="kernels\asw_aggr.cl" />
     <None Include="kernels\asw_cost.cl" />
+    <None Include="kernels\asw_hcost_aggregation.cl" />
     <None Include="kernels\asw_hsupport.cl" />
     <None Include="kernels\asw_refinement_h.cl" />
     <None Include="kernels\asw_refinement_v.cl" />
     <None Include="kernels\asw_vcost.cl" />
+    <None Include="kernels\asw_vcost_aggregation.cl" />
     <None Include="kernels\asw_vsupport.cl" />
     <None Include="kernels\asw_wta.cl" />
     <None Include="kernels\asw_wta_ref.cl" />
