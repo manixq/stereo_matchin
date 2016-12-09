@@ -482,12 +482,28 @@ int main()
   clReleaseMemObject(asw_cost_buffer[0]);
   clReleaseMemObject(asw_cost_buffer[1]);
   clReleaseMemObject(asw_left_wta);
+  clReleaseMemObject(asw_right_wta);
   clReleaseMemObject(im_size);
+  clReleaseMemObject(asw_vref_l);
+  clReleaseMemObject(asw_href_l);
+  clReleaseMemObject(asw_initcost);
+  clReleaseMemObject(asw_wta_ref_l);
+  clReleaseMemObject(consistency_error);
+  clReleaseMemObject(asw_d);
+  clReleaseMemObject(asw_d_target);
+  clReleaseMemObject(asw_denom);
 
   clReleaseKernel(asw_vsupport);
   clReleaseKernel(asw_hsupport);
   clReleaseKernel(asw_vcost);
   clReleaseKernel(asw_disp);
+  clReleaseKernel(asw_aggr);
+  clReleaseKernel(asw_vaggregation_kernel);
+  clReleaseKernel(asw_haggregation_kernel);
+  clReleaseKernel(consist_kernel);
+  clReleaseKernel(asw_ref_v);
+  clReleaseKernel(asw_ref_h);
+  clReleaseKernel(asw_wta_ref);
 
   clReleaseCommandQueue(queue);
   clReleaseProgram(program);
