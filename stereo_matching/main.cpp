@@ -407,6 +407,7 @@ int main()
    clSetKernelArg(asw_haggregation_kernel, 6, sizeof(cl_mem), &asw_cost_buffer[1]);
    ErCheck(clEnqueueNDRangeKernel(queue, asw_haggregation_kernel, 3, nullptr, asw_cost_size, nullptr, 1, &event_vaggr, &event_haggr));
 
+   //this part is just for testing purposes and will be put outside 'for'
    clSetKernelArg(asw_disp, 0, sizeof(cl_mem), &asw_cost_buffer[1]);
    clSetKernelArg(asw_disp, 1, sizeof(cl_mem), &asw_initcost);
    clSetKernelArg(asw_disp, 2, sizeof(cl_mem), &asw_left_wta);
@@ -439,7 +440,7 @@ int main()
   }
 
   
-
+  //its not working
   printf("\nRefinement:");
   temp = &asw_d;
   int k = 8;
