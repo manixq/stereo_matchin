@@ -11,13 +11,13 @@ __kernel void asw_WTA_REF (
     const int2 dim = get_image_dim(output);
 
     int min_d = 0;
-    float penalty = 0.085 * ref[pos.x + dim.x * pos.y + dim.x * dim.y] * fabs(ref[pos.x + dim.x * pos.y] - agg_d[pos.x + dim.x * pos.y + dim.x * dim.y * 0]) + raw_d[pos.x + dim.x * pos.y + dim.x * dim.y * 0];
-    float current_cost = raw_d[pos.x + dim.x * pos.y + dim.x * dim.y * 0] + penalty;
-    float last_current_cost = raw_d[pos.x + dim.x * pos.y + dim.x * dim.y * 0] + penalty;
+    float penalty = 0.085 * ref[pos.x + dim.x * pos.y + dim.x * dim.y] * fabs(ref[pos.x + dim.x * pos.y] - 0) + 0;
+    float current_cost = agg_d[pos.x + dim.x * pos.y + dim.x * dim.y * 0] + penalty;
+    float last_current_cost = agg_d[pos.x + dim.x * pos.y + dim.x * dim.y * 0] + penalty;
     
     for (int i = 0; i < 61; i++)
     {
-     penalty = 0.085 * ref[pos.x + dim.x * pos.y + dim.x * dim.y] * fabs(ref[pos.x + dim.x * pos.y] - agg_d[pos.x + dim.x * pos.y + dim.x * dim.y * i]) + raw_d[pos.x + dim.x * pos.y + dim.x * dim.y * i];
+     penalty = 0.085 * ref[pos.x + dim.x * pos.y + dim.x * dim.y] * fabs(ref[pos.x + dim.x * pos.y] - i) + agg_d[pos.x + dim.x * pos.y + dim.x * dim.y * i];
 
      last_current_cost = select(last_current_cost, current_cost, isless(penalty, current_cost));
      min_d = select(min_d, i, isless(penalty, current_cost));

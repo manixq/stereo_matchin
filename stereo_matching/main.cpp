@@ -394,17 +394,14 @@ int main()
    clSetKernelArg(asw_vaggregation_kernel, 1, sizeof(cl_mem), &inputImage_r);
    clSetKernelArg(asw_vaggregation_kernel, 2, sizeof(cl_mem), temp);
    clSetKernelArg(asw_vaggregation_kernel, 3, sizeof(cl_mem), &asw_denom);
-   clSetKernelArg(asw_vaggregation_kernel, 4, sizeof(cl_mem), &asw_initcost);
-   clSetKernelArg(asw_vaggregation_kernel, 5, sizeof(cl_mem), &asw_cost_buffer[0]);
+   clSetKernelArg(asw_vaggregation_kernel, 4, sizeof(cl_mem), &asw_cost_buffer[0]);
    ErCheck(clEnqueueNDRangeKernel(queue, asw_vaggregation_kernel, 3, nullptr, asw_cost_size, nullptr, 1, &event_aggr, &event_vaggr));
 
    clSetKernelArg(asw_haggregation_kernel, 0, sizeof(cl_mem), &inputImage_l);
    clSetKernelArg(asw_haggregation_kernel, 1, sizeof(cl_mem), &inputImage_r);
-   clSetKernelArg(asw_haggregation_kernel, 2, sizeof(cl_mem), temp);
-   clSetKernelArg(asw_haggregation_kernel, 3, sizeof(cl_mem), &asw_initcost);
-   clSetKernelArg(asw_haggregation_kernel, 4, sizeof(cl_mem), &asw_cost_buffer[0]);
-   clSetKernelArg(asw_haggregation_kernel, 5, sizeof(cl_mem), &asw_denom);
-   clSetKernelArg(asw_haggregation_kernel, 6, sizeof(cl_mem), &asw_cost_buffer[1]);
+   clSetKernelArg(asw_haggregation_kernel, 2, sizeof(cl_mem), &asw_cost_buffer[0]);
+   clSetKernelArg(asw_haggregation_kernel, 3, sizeof(cl_mem), &asw_denom);
+   clSetKernelArg(asw_haggregation_kernel, 4, sizeof(cl_mem), &asw_cost_buffer[1]);
    ErCheck(clEnqueueNDRangeKernel(queue, asw_haggregation_kernel, 3, nullptr, asw_cost_size, nullptr, 1, &event_vaggr, &event_haggr));
 
    //this part is just for testing purposes and will be put outside 'for'

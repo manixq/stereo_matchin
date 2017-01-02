@@ -31,7 +31,7 @@ __kernel void asw_ref_h (
     {
      //H     
      x = clamp(pos.x + i - 16, 0, dim.x - 1);
-     ww_h = supp_h(read_imagef(input, sampler, (int2)(pos.x, pos.y)), read_imagef(input, sampler, (int2)(x, pos.y)), pos, x);
+     ww_h = supp_h(read_imagef(input, sampler, (int2)(pos.x, pos.y))*1000, read_imagef(input, sampler, (int2)(x, pos.y)), pos, x)*1000;
      F = (input_est[x + dim.x * pos.y + dim.x * dim.y * 2] - input_est[x + dim.x * pos.y + dim.x * dim.y * 1]) / input_est[x + dim.x * pos.y + dim.x * dim.y * 2];
      //here input ref is vertical refinement result
      c_num_h += ww_h * F * input_REF[x + dim.x * pos.y] * input_REF[x + dim.x * pos.y + dim.x * dim.y];
