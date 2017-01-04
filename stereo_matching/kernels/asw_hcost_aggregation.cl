@@ -40,7 +40,7 @@ __kernel void asw_hCostAggregation(
  for (int i = 0; i < 33; i++)
  {
   //H
-  x = clamp(pos.x + i - 16, 0, dim.x - 1);
+  x = clamp(pos.x + i - 16, 0, dim.x );
   q = read_imagef(input_l, sampler, (int2)(x, pos.y)) * 255;
   q_ = read_imagef(input_r, sampler, (int2)(max(x - pos.z, 0), pos.y)) * 255;
   ww_h = supp_hh(p, q, (int2)(pos.x, pos.y), x);

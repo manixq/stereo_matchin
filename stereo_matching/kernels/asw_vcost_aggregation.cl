@@ -45,7 +45,7 @@ __kernel void asw_vCostAggregation (
     for (int i = 0; i < 33; i++)
     {
      //V
-     y = clamp(pos.y + i - 16, 0, dim.y - 1);
+     y = clamp(pos.y + i - 16, 0, dim.y);
      q = read_imagef(input_l, sampler, (int2)(pos.x, y)) * 255;
      q_ = read_imagef(input_r, sampler, (int2)(max(pos.x - pos.z, 0), y)) * 255;
      ww_v = supp_vv(p, q, (int2)(pos.x, pos.y), y);

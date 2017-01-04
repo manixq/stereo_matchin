@@ -13,6 +13,7 @@ float supp_v(float4 p, float4 q, int2 pos, int y)
 __kernel void asw_ref_v (
  __read_only image2d_t input,
  __global float* input_est,
+ __global float* confidence,
  __global float* output_REF
  )
 {
@@ -25,22 +26,24 @@ __kernel void asw_ref_v (
     float c_denom_v = 0; 
     float ww_v = 0;
     float F = 0;
-    float4 p = read_imagef(input, sampler, (int2)(pos.x, pos.y))*1000;
+    float4 p = read_imagef(input, sampler, (int2)(pos.x, pos.y)) * 255;
     float4 q;
+
     for (int i = 0; i < 33; i++)
     {
      //V
-     y = clamp(pos.y + i - 16, 0, dim.y-1);
-     q = read_imagef(input, sampler, (int2)(pos.x, y))*1000;
+     y = clamp(pos.y + i - 16, 0, dim.y);
+     q = read_imagef(input, sampler, (int2)(pos.x, y)) * 255;
      ww_v = supp_v(p, q, (int2)(pos.x, pos.y), y);
-     F = (input_est[pos.x + dim.x * y + dim.x * dim.y * 2] - input_est[pos.x + dim.x * y + dim.x * dim.y * 1]) / input_est[pos.x + dim.x * y + dim.x * dim.y * 2];
-
+     F = confidence[pos.x + dim.x * y];
+     
      c_num_v += ww_v * F * input_est[pos.x + dim.x * y];
      c_denom_v += ww_v * F;
+     
     }
 
     float result = c_num_v / c_denom_v;
-   // printf("ww %f \n",ww);
+ 
     output_REF[pos.x + dim.x * pos.y] = result;
     output_REF[pos.x + dim.x * pos.y + dim.x * dim.y] = c_denom_v;
 }
