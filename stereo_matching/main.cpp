@@ -131,7 +131,7 @@ int main()
 
   //variables
   static const cl_image_format format = { CL_RGBA, CL_UNORM_INT8 };
-  Image result[4] = { imgL, imgR, imgL ,  imgL};
+  Image result[4] = { imgL, imgR, imgL, imgL};
   std::size_t local[3] = { 3, 3, 1 };
   size_t numLocalGroups[] = { ceil(result[0].width / local[0]), ceil(result[0].height / local[1]) };
   int sizei[3] = { result[0].width, result[0].height, 1 };
@@ -346,6 +346,7 @@ int main()
   cl_event event_asw_wta;
   cl_event event_image;
   cl_event event_aggr;
+  cl_event event_consist_refin;
   cl_event event_vreff[2];
   cl_event event_hreff[2];
   cl_event event_wta_ref[2];
@@ -365,6 +366,7 @@ int main()
   cl_mem asw_href_l = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 2, nullptr, &error);
   cl_mem asw_href_r = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 2, nullptr, &error);
   cl_mem asw_wta_ref_l = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 2, nullptr, &error);
+  cl_mem asw_wta_ref_r = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 2, nullptr, &error);
   cl_mem asw_denom = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 61, nullptr, &error);
   cl_mem consistency_error = clCreateImage2D(context, CL_MEM_READ_WRITE, &format, result[0].width, result[0].height, 0, nullptr, &error);
   
@@ -380,7 +382,7 @@ int main()
   printf("\nAggregation:");
   cl_mem * temp = &asw_initcost;
   //loop r times
-  int r = 6;
+  int r = 10;
   for (int i = 0; i < r; i++)
   {
    clSetKernelArg(asw_vaggregation_kernel, 0, sizeof(cl_mem), &inputImage_l);
@@ -397,50 +399,41 @@ int main()
    clSetKernelArg(asw_haggregation_kernel, 4, sizeof(cl_mem), &asw_cost_buffer[1]);
    ErCheck(clEnqueueNDRangeKernel(queue, asw_haggregation_kernel, 3, nullptr, asw_cost_size, nullptr, 1, &event_vaggr, &event_haggr));
 
-   //this part is just for testing purposes and will be put outside 'for'
-   
-   clSetKernelArg(asw_disp, 0, sizeof(cl_mem), &asw_cost_buffer[1]);
-   clSetKernelArg(asw_disp, 1, sizeof(cl_mem), &asw_left_wta);
-   clSetKernelArg(asw_disp, 2, sizeof(cl_mem), &asw_d_est_reference);
-   clSetKernelArg(asw_disp, 3, sizeof(cl_mem), &asw_d_est_target);
-   clSetKernelArg(asw_disp, 4, sizeof(cl_mem), &asw_right_wta);
-   clSetKernelArg(asw_disp, 5, sizeof(cl_mem), &asw_confidence_reference);
-   clSetKernelArg(asw_disp, 6, sizeof(cl_mem), &asw_confidence_target);
-   ErCheck(clEnqueueNDRangeKernel(queue, asw_disp, 2, nullptr, size, nullptr, 1, &event_haggr, &event_asw_wta));
-   
-   
-   clSetKernelArg(consist_kernel, 0, sizeof(cl_mem), &asw_left_wta);
-   clSetKernelArg(consist_kernel, 1, sizeof(cl_mem), &asw_right_wta);
-   clSetKernelArg(consist_kernel, 2, sizeof(cl_mem), &asw_confidence_reference);
-   clSetKernelArg(consist_kernel, 3, sizeof(cl_mem), &asw_confidence_target);
-   clSetKernelArg(consist_kernel, 4, sizeof(cl_mem), &consistency_error);
-   ErCheck(clEnqueueNDRangeKernel(queue, consist_kernel, 2, nullptr, size, nullptr, 1, &event_asw_wta, &event_asw_wta));
-   
-
-   clEnqueueReadImage(queue, asw_left_wta, CL_TRUE, origin, region, 0, 0, result[2].pixel.data(), 1, &event_asw_wta, &event_aggr);
-   std::string img_name = "sukub/aggregation/reference/aggregation_" + std::to_string(i) + ".png";
-   lodepng::encode(img_name, result[2].pixel, result[1].width, result[1].height);
-
-   clEnqueueReadImage(queue, asw_right_wta, CL_TRUE, origin, region, 0, 0, result[3].pixel.data(), 1, &event_asw_wta, &event_aggr);
-   img_name = "sukub/aggregation/target/aggregation_" + std::to_string(i) + ".png";
-   lodepng::encode(img_name, result[3].pixel, result[1].width, result[1].height);
-
-   clEnqueueReadImage(queue, consistency_error, CL_TRUE, origin, region, 0, 0, result[1].pixel.data(), 1, &event_asw_wta, &event_aggr);
-   img_name = "sukub/aggregation/consistency_" + std::to_string(i) + ".png";
-   lodepng::encode(img_name, result[1].pixel, result[1].width, result[1].height);
-
    printf("\n\tloop #%d", i+1);
-
    temp = &asw_cost_buffer[1];
   }
 
+  //WTA
+  clSetKernelArg(asw_disp, 0, sizeof(cl_mem), &asw_cost_buffer[1]);
+  clSetKernelArg(asw_disp, 1, sizeof(cl_mem), &asw_left_wta);
+  clSetKernelArg(asw_disp, 2, sizeof(cl_mem), &asw_d_est_reference);
+  clSetKernelArg(asw_disp, 3, sizeof(cl_mem), &asw_d_est_target);
+  clSetKernelArg(asw_disp, 4, sizeof(cl_mem), &asw_right_wta);
+  clSetKernelArg(asw_disp, 5, sizeof(cl_mem), &asw_confidence_reference);
+  clSetKernelArg(asw_disp, 6, sizeof(cl_mem), &asw_confidence_target);
+  ErCheck(clEnqueueNDRangeKernel(queue, asw_disp, 2, nullptr, size, nullptr, 1, &event_haggr, &event_asw_wta));
+
+  //Consistency check
+  clSetKernelArg(consist_kernel, 0, sizeof(cl_mem), &asw_left_wta);
+  clSetKernelArg(consist_kernel, 1, sizeof(cl_mem), &asw_right_wta);
+  clSetKernelArg(consist_kernel, 2, sizeof(cl_mem), &asw_confidence_reference);
+  clSetKernelArg(consist_kernel, 3, sizeof(cl_mem), &asw_confidence_target);
+  clSetKernelArg(consist_kernel, 4, sizeof(cl_mem), &consistency_error);
+  ErCheck(clEnqueueNDRangeKernel(queue, consist_kernel, 2, nullptr, size, nullptr, 1, &event_asw_wta, &event_asw_wta));
   
-  //its not working
+  //delete this
+  clEnqueueReadImage(queue, asw_left_wta, CL_TRUE, origin, region, 0, 0, result[2].pixel.data(), 1, &event_asw_wta, &event_aggr);
+  lodepng::encode("sukub/aggregation/reference/final.png", result[2].pixel, result[1].width, result[1].height);
+  clEnqueueReadImage(queue, asw_right_wta, CL_TRUE, origin, region, 0, 0, result[3].pixel.data(), 1, &event_asw_wta, &event_aggr);
+  lodepng::encode("sukub/aggregation/target/final.png", result[3].pixel, result[1].width, result[1].height);
+  clEnqueueReadImage(queue, consistency_error, CL_TRUE, origin, region, 0, 0, result[1].pixel.data(), 1, &event_asw_wta, &event_aggr);
+  lodepng::encode("sukub/aggregation/consistency_final.png", result[1].pixel, result[1].width, result[1].height);
+  
   printf("\nRefinement:");
   temp = &asw_d_est_reference;
   cl_mem * temp_target = &asw_d_est_target;
 
-  int k = 8;
+  int k = 10;
   for (int i = 0; i < k; i++)
   {
    //vertical refinement for left image
@@ -481,12 +474,38 @@ int main()
    clSetKernelArg(asw_wta_ref, 4, sizeof(cl_mem), &asw_confidence_reference);
    ErCheck(clEnqueueNDRangeKernel(queue, asw_wta_ref, 2, nullptr, size, nullptr, 1, &event_hreff[0], &event_wta_ref[0]));
    
+   //WTA right image
+   clSetKernelArg(asw_wta_ref, 0, sizeof(cl_mem), &asw_cost_buffer[1]);
+   clSetKernelArg(asw_wta_ref, 1, sizeof(cl_mem), &asw_href_r);
+   clSetKernelArg(asw_wta_ref, 2, sizeof(cl_mem), &asw_right_wta);
+   clSetKernelArg(asw_wta_ref, 3, sizeof(cl_mem), &asw_wta_ref_r);
+   clSetKernelArg(asw_wta_ref, 4, sizeof(cl_mem), &asw_confidence_target);
+   ErCheck(clEnqueueNDRangeKernel(queue, asw_wta_ref, 2, nullptr, size, nullptr, 1, &event_hreff[1], &event_wta_ref[1]));
+   
+   //Consistency check
+   clSetKernelArg(consist_kernel, 0, sizeof(cl_mem), &asw_left_wta);
+   clSetKernelArg(consist_kernel, 1, sizeof(cl_mem), &asw_right_wta);
+   clSetKernelArg(consist_kernel, 2, sizeof(cl_mem), &asw_confidence_reference);
+   clSetKernelArg(consist_kernel, 3, sizeof(cl_mem), &asw_confidence_target);
+   clSetKernelArg(consist_kernel, 4, sizeof(cl_mem), &consistency_error);
+   ErCheck(clEnqueueNDRangeKernel(queue, consist_kernel, 2, nullptr, size, nullptr, 2, event_wta_ref, &event_consist_refin));
+   
 
-   clEnqueueReadImage(queue, asw_left_wta, CL_TRUE, origin, region, 0, 0, result[2].pixel.data(), 1, &event_wta_ref[0], &event_aggr);
-   std::string img_name = "sukub/refinement/refinement_" + std::to_string(i) + ".png";
+   clEnqueueReadImage(queue, asw_left_wta, CL_TRUE, origin, region, 0, 0, result[2].pixel.data(), 1, &event_consist_refin, &event_aggr);
+   std::string img_name = "sukub/refinement/target/refinement_" + std::to_string(i) + ".png";
    lodepng::encode(img_name, result[2].pixel, result[1].width, result[1].height);
+
+   clEnqueueReadImage(queue, asw_right_wta, CL_TRUE, origin, region, 0, 0, result[3].pixel.data(), 1, &event_consist_refin, &event_aggr);
+   img_name = "sukub/refinement/reference/refinement_" + std::to_string(i) + ".png";
+   lodepng::encode(img_name, result[3].pixel, result[1].width, result[1].height);
+
+   clEnqueueReadImage(queue, consistency_error, CL_TRUE, origin, region, 0, 0, result[1].pixel.data(), 1, &event_consist_refin, &event_aggr);
+   img_name = "sukub/refinement/consistency_" + std::to_string(i) + ".png";
+   lodepng::encode(img_name, result[1].pixel, result[1].width, result[1].height);
+
    printf("\n\tloop #%d", i + 1);
    temp = &asw_wta_ref_l;
+   temp_target = &asw_wta_ref_r;
   }
 
   clWaitForEvents(1, &event_aggr);

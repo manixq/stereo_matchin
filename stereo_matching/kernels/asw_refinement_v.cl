@@ -22,8 +22,8 @@ __kernel void asw_ref_v (
     const int2 dim = get_image_dim(input);
 
     int y = 0;
-    float c_num_v = 0;
-    float c_denom_v = 0; 
+    float c_num_v = 0.0001;
+    float c_denom_v = 0.0001; 
     float ww_v = 0;
     float F = 0;
     float4 p = read_imagef(input, sampler, (int2)(pos.x, pos.y)) * 255;
