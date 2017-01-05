@@ -29,8 +29,10 @@ void ErCheck(cl_int error) {
   printf("OpenCL error executing kernel: %d\n", error);
 }
 
+//This function returns execution time[ms] of two events
 double compute_time(cl_event* clevent, char* name) 
 {
+ int size = sizeof(clevent);
  cl_ulong time_start[2], time_end[2];
  double total_time;
 
@@ -38,6 +40,22 @@ double compute_time(cl_event* clevent, char* name)
  clGetEventProfilingInfo(clevent[1], CL_PROFILING_COMMAND_START, sizeof(time_start[1]), &time_start[1], nullptr);
  clGetEventProfilingInfo(clevent[0], CL_PROFILING_COMMAND_END, sizeof(time_end[0]), &time_end[0], nullptr);
  clGetEventProfilingInfo(clevent[1], CL_PROFILING_COMMAND_END, sizeof(time_end[1]), &time_end[1], nullptr);
+
+ total_time = (time_end[0] > time_end[1] ? time_end[0] : time_end[1]) - (time_start[0] < time_start[1] ? time_start[0] : time_start[1]);
+ printf("%s %0.3f ms", name, (total_time / 1000000.0));
+ return total_time / 1000000.0;
+}
+
+double compute_time(cl_event* clevent, char* name, int i)
+{
+ int size = sizeof(clevent);
+ cl_ulong time_start[2], time_end[2];
+ double total_time;
+
+ clGetEventProfilingInfo(clevent[0], CL_PROFILING_COMMAND_START, sizeof(time_start[0]), &time_start[0], nullptr);
+ clGetEventProfilingInfo(clevent[i], CL_PROFILING_COMMAND_START, sizeof(time_start[1]), &time_start[1], nullptr);
+ clGetEventProfilingInfo(clevent[0], CL_PROFILING_COMMAND_END, sizeof(time_end[0]), &time_end[0], nullptr);
+ clGetEventProfilingInfo(clevent[i], CL_PROFILING_COMMAND_END, sizeof(time_end[1]), &time_end[1], nullptr);
 
  total_time = (time_end[0] > time_end[1] ? time_end[0] : time_end[1]) - (time_start[0] < time_start[1] ? time_start[0] : time_start[1]);
  printf("%s %0.3f ms", name, (total_time / 1000000.0));
@@ -233,6 +251,7 @@ int main()
   cl_event event_disp;
 
   //median filter
+  printf("\nCross-Based Local Stereo Matching Using Orthogonal Integral Images ");
   printf("\n---Working...\nMedian filter..  ");
   clSetKernelArg(median, 0, sizeof(cl_mem), &inputImage_l);
   clSetKernelArg(median, 1, sizeof(cl_mem), &median_l); 
@@ -294,6 +313,8 @@ int main()
 
   clEnqueueReadImage(queue, f_disparity, CL_TRUE, origin, region, 0, 0, result[2].pixel.data(), 1, &event_disp, nullptr);
   
+ 
+
   //clReleaseMemObject(inputImage_l);
   //clReleaseMemObject(inputImage_r);
   clReleaseMemObject(median_l);
@@ -304,9 +325,9 @@ int main()
   clReleaseMemObject(temp_cost);
   clReleaseMemObject(cross_l);
   clReleaseMemObject(disparity);
-  clReleaseMemObject(f_disparity);
+ // clReleaseMemObject(f_disparity);
 
-  clReleaseKernel(median);
+ // clReleaseKernel(median);
   clReleaseKernel(cross);
   clReleaseKernel(aggregation);
   clReleaseKernel(integral_h);
@@ -318,7 +339,7 @@ int main()
 
  
   
-  lodepng::encode("sukub/final_disparity.png", result[2].pixel, result[1].width, result[1].height);
+  lodepng::encode("sukub/cross_based_disparity.png", result[2].pixel, result[1].width, result[1].height);
 
   //Get measured time data
   printf("\n\n---Results for %s: ", buffer);
@@ -339,20 +360,29 @@ int main()
   std::size_t asw_support_size[3] = { result[0].width, result[0].height, 33 };
   std::size_t asw_cost_size[3] = { result[0].width, result[0].height, 61 };
 
-  cl_event event_vaggr;
-  cl_event event_haggr;
+  cl_event event_vaggr[10];
+  cl_event event_haggr[10];
   cl_event event_asw_cost;
   cl_event event_asw_costh;
   cl_event event_asw_wta;
   cl_event event_image;
   cl_event event_aggr;
-  cl_event event_consist_refin;
-  cl_event event_vreff[2];
-  cl_event event_hreff[2];
-  cl_event event_wta_ref[2];
+  cl_event event_consist;
+  cl_event event_consist_refin[6];
+  cl_event event_support[4];
+  cl_event event_vreff_left[6];
+  cl_event event_hreff_left[6];
+  cl_event event_vreff_right[6];
+  cl_event event_hreff_right[6];
+  cl_event event_wta_ref_left[6];
+  cl_event event_wta_ref_right[6];
 
   cl_mem asw_cost_buffer[2]; 
   cl_mem asw_initcost = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 61, nullptr, &error);
+  cl_mem asw_vsupp_left = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 33, nullptr, &error);
+  cl_mem asw_hsupp_left = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 33, nullptr, &error); 
+  cl_mem asw_vsupp_right = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 33, nullptr, &error);
+  cl_mem asw_hsupp_right = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 33, nullptr, &error);
   asw_cost_buffer[0] = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 61, nullptr, &error);
   asw_cost_buffer[1] = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 61, nullptr, &error);
   cl_mem asw_left_wta = clCreateImage2D(context, CL_MEM_READ_WRITE, &format, result[0].width, result[0].height, 0, nullptr, &error);
@@ -369,40 +399,64 @@ int main()
   cl_mem asw_wta_ref_r = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 2, nullptr, &error);
   cl_mem asw_denom = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 61, nullptr, &error);
   cl_mem consistency_error = clCreateImage2D(context, CL_MEM_READ_WRITE, &format, result[0].width, result[0].height, 0, nullptr, &error);
-  
 
-  printf("\nAggregation cost.. ");
+
+  printf("\n\n\nReal - time Stereo Matching on CUDA using an Iterative Refinement Method for Adaptive Support - Weight Correspondences");
+  printf("\n---Working...\nRaw cost aggregation..  ");
   //per pixel 
   clSetKernelArg(asw_aggr, 0, sizeof(cl_mem), &inputImage_l);
   clSetKernelArg(asw_aggr, 1, sizeof(cl_mem), &inputImage_r);
   clSetKernelArg(asw_aggr, 2, sizeof(cl_mem), &asw_initcost);
   ErCheck(clEnqueueNDRangeKernel(queue, asw_aggr, 2, nullptr, size, nullptr, 0, nullptr, &event_aggr));
 
+  printf("\ngestalt principle - support area.. ");
+  clSetKernelArg(asw_vsupport, 0, sizeof(cl_mem), &inputImage_l);
+  clSetKernelArg(asw_vsupport, 1, sizeof(cl_mem), &asw_vsupp_left);
+  ErCheck(clEnqueueNDRangeKernel(queue, asw_vsupport, 3, nullptr, asw_support_size, nullptr, 1, &event_aggr, &event_support[0]));
+
+  clSetKernelArg(asw_hsupport, 0, sizeof(cl_mem), &inputImage_l);
+  clSetKernelArg(asw_hsupport, 1, sizeof(cl_mem), &asw_hsupp_left);
+  ErCheck(clEnqueueNDRangeKernel(queue, asw_hsupport, 3, nullptr, asw_support_size, nullptr, 1, &event_aggr, &event_support[1]));
+
+  clSetKernelArg(asw_vsupport, 0, sizeof(cl_mem), &inputImage_r);
+  clSetKernelArg(asw_vsupport, 1, sizeof(cl_mem), &asw_vsupp_right);
+  ErCheck(clEnqueueNDRangeKernel(queue, asw_vsupport, 3, nullptr, asw_support_size, nullptr, 1, &event_aggr, &event_support[2]));
+
+  clSetKernelArg(asw_hsupport, 0, sizeof(cl_mem), &inputImage_r);
+  clSetKernelArg(asw_hsupport, 1, sizeof(cl_mem), &asw_hsupp_right);
+  ErCheck(clEnqueueNDRangeKernel(queue, asw_hsupport, 3, nullptr, asw_support_size, nullptr, 1, &event_aggr, &event_support[3]));
+
    //cost - V
-  printf("\nAggregation:");
+  printf("\nCost aggregation.. ");
   cl_mem * temp = &asw_initcost;
+  cl_event* ptr = event_support;
+  int event_number = 4;
   //loop r times
   int r = 10;
   for (int i = 0; i < r; i++)
   {
    clSetKernelArg(asw_vaggregation_kernel, 0, sizeof(cl_mem), &inputImage_l);
-   clSetKernelArg(asw_vaggregation_kernel, 1, sizeof(cl_mem), &inputImage_r);
-   clSetKernelArg(asw_vaggregation_kernel, 2, sizeof(cl_mem), temp);
-   clSetKernelArg(asw_vaggregation_kernel, 3, sizeof(cl_mem), &asw_denom);
-   clSetKernelArg(asw_vaggregation_kernel, 4, sizeof(cl_mem), &asw_cost_buffer[0]);
-   ErCheck(clEnqueueNDRangeKernel(queue, asw_vaggregation_kernel, 3, nullptr, asw_cost_size, nullptr, 1, &event_aggr, &event_vaggr));
+   clSetKernelArg(asw_vaggregation_kernel, 1, sizeof(cl_mem), &asw_vsupp_left);
+   clSetKernelArg(asw_vaggregation_kernel, 2, sizeof(cl_mem), &asw_vsupp_right);
+   clSetKernelArg(asw_vaggregation_kernel, 3, sizeof(cl_mem), temp);
+   clSetKernelArg(asw_vaggregation_kernel, 4, sizeof(cl_mem), &asw_denom);
+   clSetKernelArg(asw_vaggregation_kernel, 5, sizeof(cl_mem), &asw_cost_buffer[0]);
+   ErCheck(clEnqueueNDRangeKernel(queue, asw_vaggregation_kernel, 3, nullptr, asw_cost_size, nullptr, event_number, ptr, &event_vaggr[i]));
 
    clSetKernelArg(asw_haggregation_kernel, 0, sizeof(cl_mem), &inputImage_l);
-   clSetKernelArg(asw_haggregation_kernel, 1, sizeof(cl_mem), &inputImage_r);
-   clSetKernelArg(asw_haggregation_kernel, 2, sizeof(cl_mem), &asw_cost_buffer[0]);
-   clSetKernelArg(asw_haggregation_kernel, 3, sizeof(cl_mem), &asw_denom);
-   clSetKernelArg(asw_haggregation_kernel, 4, sizeof(cl_mem), &asw_cost_buffer[1]);
-   ErCheck(clEnqueueNDRangeKernel(queue, asw_haggregation_kernel, 3, nullptr, asw_cost_size, nullptr, 1, &event_vaggr, &event_haggr));
+   clSetKernelArg(asw_haggregation_kernel, 1, sizeof(cl_mem), &asw_hsupp_left);
+   clSetKernelArg(asw_haggregation_kernel, 2, sizeof(cl_mem), &asw_hsupp_right);
+   clSetKernelArg(asw_haggregation_kernel, 3, sizeof(cl_mem), &asw_cost_buffer[0]);
+   clSetKernelArg(asw_haggregation_kernel, 4, sizeof(cl_mem), &asw_denom);
+   clSetKernelArg(asw_haggregation_kernel, 5, sizeof(cl_mem), &asw_cost_buffer[1]);
+   ErCheck(clEnqueueNDRangeKernel(queue, asw_haggregation_kernel, 3, nullptr, asw_cost_size, nullptr, 1, &event_vaggr[i], &event_haggr[i]));
 
-   printf("\n\tloop #%d", i+1);
    temp = &asw_cost_buffer[1];
+   ptr = &event_haggr[i];
+   event_number = 1;
   }
 
+  printf("\nWTA.. ");
   //WTA
   clSetKernelArg(asw_disp, 0, sizeof(cl_mem), &asw_cost_buffer[1]);
   clSetKernelArg(asw_disp, 1, sizeof(cl_mem), &asw_left_wta);
@@ -411,29 +465,23 @@ int main()
   clSetKernelArg(asw_disp, 4, sizeof(cl_mem), &asw_right_wta);
   clSetKernelArg(asw_disp, 5, sizeof(cl_mem), &asw_confidence_reference);
   clSetKernelArg(asw_disp, 6, sizeof(cl_mem), &asw_confidence_target);
-  ErCheck(clEnqueueNDRangeKernel(queue, asw_disp, 2, nullptr, size, nullptr, 1, &event_haggr, &event_asw_wta));
+  ErCheck(clEnqueueNDRangeKernel(queue, asw_disp, 2, nullptr, size, nullptr, r, event_haggr, &event_asw_wta));
 
+  printf("\nConsistency check.. ");
   //Consistency check
   clSetKernelArg(consist_kernel, 0, sizeof(cl_mem), &asw_left_wta);
   clSetKernelArg(consist_kernel, 1, sizeof(cl_mem), &asw_right_wta);
   clSetKernelArg(consist_kernel, 2, sizeof(cl_mem), &asw_confidence_reference);
   clSetKernelArg(consist_kernel, 3, sizeof(cl_mem), &asw_confidence_target);
   clSetKernelArg(consist_kernel, 4, sizeof(cl_mem), &consistency_error);
-  ErCheck(clEnqueueNDRangeKernel(queue, consist_kernel, 2, nullptr, size, nullptr, 1, &event_asw_wta, &event_asw_wta));
+  ErCheck(clEnqueueNDRangeKernel(queue, consist_kernel, 2, nullptr, size, nullptr, 1, &event_asw_wta, &event_consist));
   
-  //delete this
-  clEnqueueReadImage(queue, asw_left_wta, CL_TRUE, origin, region, 0, 0, result[2].pixel.data(), 1, &event_asw_wta, &event_aggr);
-  lodepng::encode("sukub/aggregation/reference/final.png", result[2].pixel, result[1].width, result[1].height);
-  clEnqueueReadImage(queue, asw_right_wta, CL_TRUE, origin, region, 0, 0, result[3].pixel.data(), 1, &event_asw_wta, &event_aggr);
-  lodepng::encode("sukub/aggregation/target/final.png", result[3].pixel, result[1].width, result[1].height);
-  clEnqueueReadImage(queue, consistency_error, CL_TRUE, origin, region, 0, 0, result[1].pixel.data(), 1, &event_asw_wta, &event_aggr);
-  lodepng::encode("sukub/aggregation/consistency_final.png", result[1].pixel, result[1].width, result[1].height);
-  
-  printf("\nRefinement:");
+  printf("\nRefinement..");
   temp = &asw_d_est_reference;
   cl_mem * temp_target = &asw_d_est_target;
-
-  int k = 10;
+  ptr = &event_consist;
+  cl_event ptr_doubled[2];
+  int k = 6;
   for (int i = 0; i < k; i++)
   {
    //vertical refinement for left image
@@ -441,14 +489,14 @@ int main()
    clSetKernelArg(asw_ref_v, 1, sizeof(cl_mem), temp);
    clSetKernelArg(asw_ref_v, 2, sizeof(cl_mem), &asw_confidence_reference);
    clSetKernelArg(asw_ref_v, 3, sizeof(cl_mem), &asw_vref_l);
-   ErCheck(clEnqueueNDRangeKernel(queue, asw_ref_v, 2, nullptr, size, nullptr, 1, &event_aggr, &event_vreff[0]));
+   ErCheck(clEnqueueNDRangeKernel(queue, asw_ref_v, 2, nullptr, size, nullptr, 1, ptr, &event_vreff_left[i]));
 
    //vertical refinement for right image
    clSetKernelArg(asw_ref_v, 0, sizeof(cl_mem), &inputImage_r);
    clSetKernelArg(asw_ref_v, 1, sizeof(cl_mem), temp_target);
    clSetKernelArg(asw_ref_v, 2, sizeof(cl_mem), &asw_confidence_target);
    clSetKernelArg(asw_ref_v, 3, sizeof(cl_mem), &asw_vref_r);
-   ErCheck(clEnqueueNDRangeKernel(queue, asw_ref_v, 2, nullptr, size, nullptr, 1, &event_aggr, &event_vreff[1]));
+   ErCheck(clEnqueueNDRangeKernel(queue, asw_ref_v, 2, nullptr, size, nullptr, 1, ptr, &event_vreff_right[i]));
 
    //horizontal refinement for left image
    clSetKernelArg(asw_ref_h, 0, sizeof(cl_mem), &inputImage_l);
@@ -456,7 +504,7 @@ int main()
    clSetKernelArg(asw_ref_h, 2, sizeof(cl_mem), &asw_confidence_reference);
    clSetKernelArg(asw_ref_h, 3, sizeof(cl_mem), &asw_vref_l);
    clSetKernelArg(asw_ref_h, 4, sizeof(cl_mem), &asw_href_l);
-   ErCheck(clEnqueueNDRangeKernel(queue, asw_ref_h, 2, nullptr, size, nullptr, 1, &event_vreff[0], &event_hreff[0]));
+   ErCheck(clEnqueueNDRangeKernel(queue, asw_ref_h, 2, nullptr, size, nullptr, 1, &event_vreff_left[i], &event_hreff_left[i]));
 
    //horizontal refinement for right image
    clSetKernelArg(asw_ref_h, 0, sizeof(cl_mem), &inputImage_r);
@@ -464,7 +512,7 @@ int main()
    clSetKernelArg(asw_ref_h, 2, sizeof(cl_mem), &asw_confidence_target);
    clSetKernelArg(asw_ref_h, 3, sizeof(cl_mem), &asw_vref_r);
    clSetKernelArg(asw_ref_h, 4, sizeof(cl_mem), &asw_href_r);
-   ErCheck(clEnqueueNDRangeKernel(queue, asw_ref_h, 2, nullptr, size, nullptr, 1, &event_vreff[1], &event_hreff[1]));
+   ErCheck(clEnqueueNDRangeKernel(queue, asw_ref_h, 2, nullptr, size, nullptr, 1, &event_vreff_right[i], &event_hreff_right[i]));
 
    //WTA left image
    clSetKernelArg(asw_wta_ref, 0, sizeof(cl_mem), &asw_cost_buffer[1]);
@@ -472,7 +520,7 @@ int main()
    clSetKernelArg(asw_wta_ref, 2, sizeof(cl_mem), &asw_left_wta);
    clSetKernelArg(asw_wta_ref, 3, sizeof(cl_mem), &asw_wta_ref_l);
    clSetKernelArg(asw_wta_ref, 4, sizeof(cl_mem), &asw_confidence_reference);
-   ErCheck(clEnqueueNDRangeKernel(queue, asw_wta_ref, 2, nullptr, size, nullptr, 1, &event_hreff[0], &event_wta_ref[0]));
+   ErCheck(clEnqueueNDRangeKernel(queue, asw_wta_ref, 2, nullptr, size, nullptr, 1, &event_hreff_left[i], &event_wta_ref_left[i]));
    
    //WTA right image
    clSetKernelArg(asw_wta_ref, 0, sizeof(cl_mem), &asw_cost_buffer[1]);
@@ -480,39 +528,99 @@ int main()
    clSetKernelArg(asw_wta_ref, 2, sizeof(cl_mem), &asw_right_wta);
    clSetKernelArg(asw_wta_ref, 3, sizeof(cl_mem), &asw_wta_ref_r);
    clSetKernelArg(asw_wta_ref, 4, sizeof(cl_mem), &asw_confidence_target);
-   ErCheck(clEnqueueNDRangeKernel(queue, asw_wta_ref, 2, nullptr, size, nullptr, 1, &event_hreff[1], &event_wta_ref[1]));
+   ErCheck(clEnqueueNDRangeKernel(queue, asw_wta_ref, 2, nullptr, size, nullptr, 1, &event_hreff_right[i], &event_wta_ref_right[i]));
    
+   ptr_doubled[0] = event_wta_ref_left[i];
+   ptr_doubled[1] = event_wta_ref_right[i];
    //Consistency check
    clSetKernelArg(consist_kernel, 0, sizeof(cl_mem), &asw_left_wta);
    clSetKernelArg(consist_kernel, 1, sizeof(cl_mem), &asw_right_wta);
    clSetKernelArg(consist_kernel, 2, sizeof(cl_mem), &asw_confidence_reference);
    clSetKernelArg(consist_kernel, 3, sizeof(cl_mem), &asw_confidence_target);
    clSetKernelArg(consist_kernel, 4, sizeof(cl_mem), &consistency_error);
-   ErCheck(clEnqueueNDRangeKernel(queue, consist_kernel, 2, nullptr, size, nullptr, 2, event_wta_ref, &event_consist_refin));
-   
+   ErCheck(clEnqueueNDRangeKernel(queue, consist_kernel, 2, nullptr, size, nullptr, 2, ptr_doubled, &event_consist_refin[i]));
 
-   clEnqueueReadImage(queue, asw_left_wta, CL_TRUE, origin, region, 0, 0, result[2].pixel.data(), 1, &event_consist_refin, &event_aggr);
-   std::string img_name = "sukub/refinement/target/refinement_" + std::to_string(i) + ".png";
-   lodepng::encode(img_name, result[2].pixel, result[1].width, result[1].height);
-
-   clEnqueueReadImage(queue, asw_right_wta, CL_TRUE, origin, region, 0, 0, result[3].pixel.data(), 1, &event_consist_refin, &event_aggr);
-   img_name = "sukub/refinement/reference/refinement_" + std::to_string(i) + ".png";
-   lodepng::encode(img_name, result[3].pixel, result[1].width, result[1].height);
-
-   clEnqueueReadImage(queue, consistency_error, CL_TRUE, origin, region, 0, 0, result[1].pixel.data(), 1, &event_consist_refin, &event_aggr);
-   img_name = "sukub/refinement/consistency_" + std::to_string(i) + ".png";
-   lodepng::encode(img_name, result[1].pixel, result[1].width, result[1].height);
-
-   printf("\n\tloop #%d", i + 1);
+   ptr = &event_consist_refin[i];
    temp = &asw_wta_ref_l;
    temp_target = &asw_wta_ref_r;
   }
 
-  clWaitForEvents(1, &event_aggr);
-  
-  
+  printf("\nPost Processing..\n\n");
+  clSetKernelArg(median, 0, sizeof(cl_mem), &consistency_error);
+  clSetKernelArg(median, 1, sizeof(cl_mem), &f_disparity);
+  clEnqueueNDRangeKernel(queue, median, 2, nullptr, globalSize, local, 1, ptr, &event_median[0]);
 
+  clEnqueueReadImage(queue, f_disparity, CL_TRUE, origin, region, 0, 0, result[1].pixel.data(), 1, &event_median[0], nullptr);
+  lodepng::encode("sukub/asw_disparity.png", result[1].pixel, result[1].width, result[1].height);
+  
+  printf("\n\n---Results for %s: ", buffer);
+  compute_time(event_aggr, "\nRaw Aggregation: ");
+  compute_time(event_support, "\nSupport weight: ", 3);
 
+  float mean = 0;
+  printf("\nVertical - cost aggregation LOOP");
+  for (int i = 0; i < r; i++)
+  {
+   mean += compute_time(event_vaggr[i], "\n---Vertical cost aggregation: ");
+  }
+  printf("\nMean vertical cost aggregation: %f\n", mean/r);
+
+  mean = 0;
+  printf("\nHorizontal - cost aggregation LOOP");
+  for (int i = 0; i < r; i++)
+  {
+   mean += compute_time(event_haggr[i], "\n---Horizontal cost aggregation: ");
+  }
+  printf("\nMean horizontal cost aggregation: %f\n", mean / r);
+
+  cl_event total_aggr[2] = { event_vaggr[0], event_haggr[9] };
+  compute_time(total_aggr, "\nTotal Aggregation time: ");
+  compute_time(event_asw_wta, "\nWTA: ");
+  compute_time(event_consist, "\nConsistency Check: ");
+
+  mean = 0;
+  printf("\nVertical - Refinement LOOP");
+  for (int i = 0; i < k; i++)
+  {
+   mean += compute_time(event_vreff_left[i], "\n---Vertical refinement left: ");
+   mean += compute_time(event_vreff_right[i], "\n---Vertical refinement right: ");
+  }
+  printf("\nMean vertical refinement: %f\n", mean / (2 * k));
+
+  mean = 0;
+  printf("\nHorizontal - Refinement LOOP");
+  for (int i = 0; i < k; i++)
+  {
+   mean += compute_time(event_hreff_left[i], "\n---Horizontal refinement left: ");
+   mean += compute_time(event_hreff_right[i], "\n---Horizontal refinement right: ");
+  }
+  printf("\nMean horizontal refinement: %f\n", mean / (2 * k));
+
+  mean = 0;
+  printf("\nWTA - Refinement LOOP");
+  for (int i = 0; i < k; i++)
+  {
+   mean += compute_time(event_wta_ref_left[i], "\n---WTA refinement left: ");
+   mean += compute_time(event_wta_ref_right[i], "\n---WTA refinement right: ");
+  }
+  printf("\nMean WTA refinement: %f\n", mean / (2 * k));
+
+  mean = 0;
+  printf("\nConsistency check - Refinement LOOP");
+  for (int i = 0; i < k; i++)
+  {
+   mean += compute_time(event_consist_refin[i], "\n---Consistency check: ");
+  }
+  printf("\nMean consistency check - refinement: %f\n", mean / k);
+
+  cl_event total_ref[2] = { event_vreff_left[0], event_consist_refin[5] };
+  compute_time(total_ref, "\nTotal Refinement time: ");
+  compute_time(event_median[0], "\nMedian time: ");
+
+  cl_event wta_total_event[2] = { event_aggr, event_median[0] };
+  compute_time(wta_total_event, "\n--- Total time in milliseconds = ");
+  printf("\n");
+  
 
   clReleaseMemObject(inputImage_l);
   clReleaseMemObject(inputImage_r);
@@ -529,7 +637,10 @@ int main()
   clReleaseMemObject(asw_d_est_reference);
   clReleaseMemObject(asw_confidence_reference);
   clReleaseMemObject(asw_denom);
+  clReleaseMemObject(f_disparity);
 
+
+  clReleaseKernel(median);
   clReleaseKernel(asw_vsupport);
   clReleaseKernel(asw_hsupport);
   clReleaseKernel(asw_vcost);
@@ -555,7 +666,7 @@ int main()
    again = false;   
   else
   {
-   printf("~Whats wrong with you?\n ");
+   printf("~I quit\n ");
    again = false;
   }
  }

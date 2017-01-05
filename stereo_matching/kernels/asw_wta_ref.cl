@@ -21,8 +21,9 @@ __kernel void asw_WTA_REF (
      penalty = 0.085f * ref[pos.x + dim.x * pos.y + dim.x * dim.y] * fabs(ref[pos.x + dim.x * pos.y] - i) + agg_d[pos.x + dim.x * pos.y + dim.x * dim.y * i];
 
      //need little fix here, same in asw_wta
-     last_current_cost = select(last_current_cost, current_cost, isless(penalty, current_cost));
+     last_current_cost = select(last_current_cost, penalty, isless(penalty, last_current_cost));
      min_d = select(min_d, i, isless(penalty, current_cost));
+     last_current_cost = select(last_current_cost, current_cost, isless(penalty, current_cost));
      current_cost = select(current_cost, penalty, isless(penalty, current_cost));
     }
     float result = (float)(min_d) / 60.0f;

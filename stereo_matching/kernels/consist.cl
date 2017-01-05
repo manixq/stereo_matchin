@@ -21,10 +21,10 @@ __kernel void Constistency(
 
  float4 result = (float4)(1.0f, 0.0f, 0.0f, 1.0f);
 
- result =  select(result, pixel_ref / 60, isless(fabs(pixel_tar - pixel_ref), 1.1f));
+ result =  select(result, pixel_ref / 60, isless(fabs(pixel_tar - pixel_ref), 1.001f));
 
- confidence_ref[pos.x + pos.y * dim.x] = select(confidence_ref[pos.x + pos.y * dim.x], 0.0f, isless(result.y, result.x));
- confidence_tar[pos.x + pos.y * dim.x] = select(confidence_tar[pos.x + pos.y * dim.x], 0.0f, isless(result.y, result.x));
+ confidence_ref[pos.x + pos.y * dim.x] = select(0.0f, confidence_ref[pos.x + pos.y * dim.x], isless(fabs(pixel_tar.x - pixel_ref.x), 1.001f));
+ confidence_tar[pos.x + pos.y * dim.x] = select(0.0f, confidence_tar[pos.x + pos.y * dim.x], isless(fabs(pixel_tar.x - pixel_ref.x), 1.001f));
  
- write_imagef(output, (int2)(pos.x, pos.y), result);
+ write_imagef(output, (int2)(pos.x, pos.y),min(pixel_ref / 60, pixel_tar / 60));
 }

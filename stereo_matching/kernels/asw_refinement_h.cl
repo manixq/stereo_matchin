@@ -10,7 +10,8 @@ float supp_h(float4 p, float4 q, int2 pos, int x)
 
  return w;
 }
-
+// spis tresci
+//pdfy nie numerkami 
 //for every pixel p(x,y)
 __kernel void asw_ref_h (
  __read_only image2d_t input,
@@ -24,19 +25,20 @@ __kernel void asw_ref_h (
     const int2 pos = {get_global_id(0), get_global_id(1)};
     const int2 dim = get_image_dim(input);
 
+    float x_mult = 500;
     int x = 0;
-    float c_num_h = 0.0001;
-    float c_denom_h = 0.0001;
+    float c_num_h = 0.00001;
+    float c_denom_h = 0.00001;
     float ww_h;
     float F;
-    float4 p = read_imagef(input, sampler, (int2)(pos.x, pos.y)) * 255;
+    float4 p = read_imagef(input, sampler, (int2)(pos.x, pos.y)) * x_mult;
     float4 q;
 
     for (int i = 0; i < 33; i++)
     {
      //H     
      x = clamp(pos.x + i - 16, 0, dim.x );
-     q = read_imagef(input, sampler, (int2)(x, pos.y)) * 255;
+     q = read_imagef(input, sampler, (int2)(x, pos.y)) * x_mult;
      ww_h = supp_h(p, q, (int2)(pos.x, pos.y), x);
      F = confidence[x + dim.x * pos.y];
      //here input ref is vertical refinement result

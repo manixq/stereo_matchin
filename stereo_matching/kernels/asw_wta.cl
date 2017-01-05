@@ -34,26 +34,19 @@ __kernel void asw_WTA (
 
     for (int i = 0; i < 61; i++)
     {
-
+     
      temp = output_cost[pos.x + dim.x * pos.y + dim.x * dim.y * i];
+     /*
      last_current_cost = select(last_current_cost, current_cost, isless(temp, current_cost));
      min_d = select(min_d, i, isless(temp, current_cost));
      current_cost = select(current_cost, temp, isless(temp, current_cost));
-    }
-
-    //from d = zero or from  d = dminR??
-
-    /*
-    int d_xr = 0;
-    d_r = min_d;
-    current_cost = output_cost[max(0, pos.x - d_r) + dim.x * pos.y];
-    for (int i = 0; i < 61; i++)
-    {
-     temp = output_cost[max(0, pos.x - d_r) + dim.x * pos.y + dim.x * dim.y * i];
-     d_xr = select(d_xr, i, isless(temp, current_cost));
+     */
+     last_current_cost = select(last_current_cost, temp, isless(temp, last_current_cost));
+     min_d = select(min_d, i, isless(temp, current_cost));
+     last_current_cost = select(last_current_cost, current_cost, isless(temp, current_cost));
      current_cost = select(current_cost, temp, isless(temp, current_cost));
     }
-    */
+
     
     int b = 0;
     d_r = min_d;
@@ -63,10 +56,15 @@ __kernel void asw_WTA (
     for (int i = 0; i < d_r; i++)
     {
      b = bresenham((int2)(0, pos.x - d_r), (int2)(min_d, pos.x), max(0, pos.x - i)); //d_xr instead of 0
-     last_current_cost_target = output_cost[max(0, pos.x - i) + dim.x * pos.y + dim.x * dim.y * b];
-     last_min_r = select(last_min_r, min_d_r, isless(last_current_cost_target, current_cost_target));
-     min_d_r = select(min_d_r, b, isless(last_current_cost_target, current_cost_target));
-     current_cost_target = select(current_cost_target, last_current_cost_target, isless(last_current_cost_target, current_cost_target));
+     //last_current_cost_target = output_cost[max(0, pos.x - i) + dim.x * pos.y + dim.x * dim.y * b];
+     //min_d_r = select(min_d_r, b, isless(last_current_cost_target, current_cost_target));
+    // current_cost_target = select(current_cost_target, last_current_cost_target, isless(last_current_cost_target, current_cost_target));
+
+     temp = output_cost[max(0, pos.x - i) + dim.x * pos.y + dim.x * dim.y * b];
+     last_current_cost_target = select(last_current_cost_target, temp, isless(temp, last_current_cost_target));
+     min_d_r = select(min_d_r, b, isless(temp, current_cost_target));
+     last_current_cost_target = select(last_current_cost_target, current_cost_target, isless(temp, current_cost_target));
+     current_cost_target = select(current_cost_target, temp, isless(temp, current_cost_target));
     }
     
     

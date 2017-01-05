@@ -21,19 +21,20 @@ __kernel void asw_ref_v (
     const int2 pos = {get_global_id(0), get_global_id(1)};
     const int2 dim = get_image_dim(input);
 
+    float x_mult = 500;
     int y = 0;
-    float c_num_v = 0.0001;
-    float c_denom_v = 0.0001; 
+    float c_num_v = 0.00001;
+    float c_denom_v = 0.00001; 
     float ww_v = 0;
     float F = 0;
-    float4 p = read_imagef(input, sampler, (int2)(pos.x, pos.y)) * 255;
+    float4 p = read_imagef(input, sampler, (int2)(pos.x, pos.y)) * x_mult;
     float4 q;
 
     for (int i = 0; i < 33; i++)
     {
      //V
      y = clamp(pos.y + i - 16, 0, dim.y);
-     q = read_imagef(input, sampler, (int2)(pos.x, y)) * 255;
+     q = read_imagef(input, sampler, (int2)(pos.x, y)) * x_mult;
      ww_v = supp_v(p, q, (int2)(pos.x, pos.y), y);
      F = confidence[pos.x + dim.x * y];
      
