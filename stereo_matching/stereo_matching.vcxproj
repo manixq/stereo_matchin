@@ -166,6 +166,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="kernels\aggregation.cl" />
+    <None Include="kernels\asw.cl" />
     <None Include="kernels\asw_aggr.cl" />
     <None Include="kernels\asw_cost.cl" />
     <None Include="kernels\asw_hcost_aggregation.cl" />

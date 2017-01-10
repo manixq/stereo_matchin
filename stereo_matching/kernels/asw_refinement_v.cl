@@ -33,7 +33,7 @@ __kernel void asw_ref_v (
     for (int i = 0; i < 33; i++)
     {
      //V
-     y = clamp(pos.y + i - 16, 0, dim.y);
+     y = clamp(pos.y + i - 16, 0, dim.y - 1);
      q = read_imagef(input, sampler, (int2)(pos.x, y)) * x_mult;
      ww_v = supp_v(p, q, (int2)(pos.x, pos.y), y);
      F = confidence[pos.x + dim.x * y];

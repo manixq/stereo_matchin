@@ -23,26 +23,22 @@ __kernel void asw_vCostAggregation (
     int y = 0;
     float c_num_v = 0.00001;
     float c_denom_v = 0.00001;
-    float ww_v = 0;
-    float ww_v_ = 0;
     int index_d = max(pos.x - pos.z, 0) + pos.y * dim.x;
     int index = pos.x + pos.y * dim.x;
     int size = dim.x * dim.y;
+    int size_ext = size * pos.z;
     float ww = 0;
     float result = 0;
 
     for (int i = 0; i < 33; i++)
     {
      //V
-     y = clamp(pos.y + i - 16, 0, dim.y);
-     ww_v = supp_left[index + size * i];
-     ww_v_ = supp_right[index_d + size * i];
-
-     ww = supp_left[index + size * i] * supp_right[index_d + size * i];;
-     c_num_v += ww * input_cost[pos.x + dim.x * y + dim.x * dim.y * pos.z];
+     y = clamp(pos.y + i - 16, 0, dim.y-1);
+     ww = supp_left[index + size * i] *supp_right[index_d + size * i];
+     c_num_v += ww * input_cost[pos.x + dim.x * y + size_ext];
      c_denom_v += ww;
     }
     result = c_num_v / c_denom_v;
-    output_cost[pos.x + dim.x * pos.y + dim.x * dim.y * pos.z] = result; 
-    output_denom[pos.x + dim.x * pos.y + dim.x * dim.y * pos.z] = c_denom_v;
+    output_cost[index + size_ext] = result;
+    output_denom[index + size_ext] = c_denom_v;
 }

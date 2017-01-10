@@ -151,6 +151,7 @@ int main()
   static const cl_image_format format = { CL_RGBA, CL_UNORM_INT8 };
   Image result[4] = { imgL, imgR, imgL, imgL};
   std::size_t local[3] = { 3, 3, 1 };
+  std::size_t local_asw[3] = { 48, 1, 1 }; 
   size_t numLocalGroups[] = { ceil(result[0].width / local[0]), ceil(result[0].height / local[1]) };
   int sizei[3] = { result[0].width, result[0].height, 1 };
   //global work size
@@ -363,6 +364,7 @@ int main()
   cl_event event_vaggr[10];
   cl_event event_haggr[10];
   cl_event event_asw_cost;
+  cl_event event_asw[2];
   cl_event event_asw_costh;
   cl_event event_asw_wta;
   cl_event event_image;
@@ -380,7 +382,9 @@ int main()
   cl_mem asw_cost_buffer[2]; 
   cl_mem asw_initcost = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 61, nullptr, &error);
   cl_mem asw_vsupp_left = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 33, nullptr, &error);
-  cl_mem asw_hsupp_left = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 33, nullptr, &error); 
+  cl_mem asw_hsupp_left = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 33, nullptr, &error);
+  cl_mem asw_ww_v = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 33, nullptr, &error);
+  cl_mem asw_ww_h = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 33, nullptr, &error);
   cl_mem asw_vsupp_right = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 33, nullptr, &error);
   cl_mem asw_hsupp_right = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 33, nullptr, &error);
   asw_cost_buffer[0] = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * result[1].width * result[1].height * 61, nullptr, &error);
@@ -441,7 +445,7 @@ int main()
    clSetKernelArg(asw_vaggregation_kernel, 3, sizeof(cl_mem), temp);
    clSetKernelArg(asw_vaggregation_kernel, 4, sizeof(cl_mem), &asw_denom);
    clSetKernelArg(asw_vaggregation_kernel, 5, sizeof(cl_mem), &asw_cost_buffer[0]);
-   ErCheck(clEnqueueNDRangeKernel(queue, asw_vaggregation_kernel, 3, nullptr, asw_cost_size, nullptr, event_number, ptr, &event_vaggr[i]));
+   ErCheck(clEnqueueNDRangeKernel(queue, asw_vaggregation_kernel, 3, nullptr, asw_cost_size, local_asw, event_number, ptr, &event_vaggr[i]));
 
    clSetKernelArg(asw_haggregation_kernel, 0, sizeof(cl_mem), &inputImage_l);
    clSetKernelArg(asw_haggregation_kernel, 1, sizeof(cl_mem), &asw_hsupp_left);
@@ -449,13 +453,13 @@ int main()
    clSetKernelArg(asw_haggregation_kernel, 3, sizeof(cl_mem), &asw_cost_buffer[0]);
    clSetKernelArg(asw_haggregation_kernel, 4, sizeof(cl_mem), &asw_denom);
    clSetKernelArg(asw_haggregation_kernel, 5, sizeof(cl_mem), &asw_cost_buffer[1]);
-   ErCheck(clEnqueueNDRangeKernel(queue, asw_haggregation_kernel, 3, nullptr, asw_cost_size, nullptr, 1, &event_vaggr[i], &event_haggr[i]));
+   ErCheck(clEnqueueNDRangeKernel(queue, asw_haggregation_kernel, 3, nullptr, asw_cost_size, local_asw, 1, &event_vaggr[i], &event_haggr[i]));
 
    temp = &asw_cost_buffer[1];
    ptr = &event_haggr[i];
    event_number = 1;
   }
-
+  
   printf("\nWTA.. ");
   //WTA
   clSetKernelArg(asw_disp, 0, sizeof(cl_mem), &asw_cost_buffer[1]);
@@ -466,7 +470,7 @@ int main()
   clSetKernelArg(asw_disp, 5, sizeof(cl_mem), &asw_confidence_reference);
   clSetKernelArg(asw_disp, 6, sizeof(cl_mem), &asw_confidence_target);
   ErCheck(clEnqueueNDRangeKernel(queue, asw_disp, 2, nullptr, size, nullptr, r, event_haggr, &event_asw_wta));
-
+  
   printf("\nConsistency check.. ");
   //Consistency check
   clSetKernelArg(consist_kernel, 0, sizeof(cl_mem), &asw_left_wta);
@@ -544,7 +548,7 @@ int main()
    temp = &asw_wta_ref_l;
    temp_target = &asw_wta_ref_r;
   }
-
+  
   printf("\nPost Processing..\n\n");
   clSetKernelArg(median, 0, sizeof(cl_mem), &consistency_error);
   clSetKernelArg(median, 1, sizeof(cl_mem), &f_disparity);
@@ -573,7 +577,7 @@ int main()
   }
   printf("\nMean horizontal cost aggregation: %f\n", mean / r);
 
-  cl_event total_aggr[2] = { event_vaggr[0], event_haggr[9] };
+  cl_event total_aggr[2] = { event_vaggr[0], event_haggr[r-1] };
   compute_time(total_aggr, "\nTotal Aggregation time: ");
   compute_time(event_asw_wta, "\nWTA: ");
   compute_time(event_consist, "\nConsistency Check: ");
@@ -613,13 +617,14 @@ int main()
   }
   printf("\nMean consistency check - refinement: %f\n", mean / k);
 
-  cl_event total_ref[2] = { event_vreff_left[0], event_consist_refin[5] };
+  cl_event total_ref[2] = { event_vreff_left[0], event_consist_refin[k-1] };
   compute_time(total_ref, "\nTotal Refinement time: ");
   compute_time(event_median[0], "\nMedian time: ");
 
   cl_event wta_total_event[2] = { event_aggr, event_median[0] };
   compute_time(wta_total_event, "\n--- Total time in milliseconds = ");
   printf("\n");
+  //compute_time(event_asw, "\n--- testtime in milliseconds = ");
   
 
   clReleaseMemObject(inputImage_l);

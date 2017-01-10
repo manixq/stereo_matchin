@@ -1,18 +1,58 @@
 
-//for sorting rows and columns
-void sort(float4 *x, float4 *y, float4 *z)
+/*
+Based on:
+3x3 Median
+Morgan McGuire and Kyle Whitson
+http://graphics.cs.williams.edu
+*/
+
+void s2(float4 *a, float4 *b)	
 {
- float4 temp = *x;
- *x = select(*y, *x, isless(*x, *y));
- *y = select(temp, *y, isless(temp, *y));
+ float4 temp = *a; 
+ *a = min(*a, *b); 
+ *b = max(temp, *b);
+}
 
- temp = *y;
- *y = select(*z, *y, isless(*y, *z));
- *z = select(temp, *z, isless(temp, *z));
+void mn3(float4 *a, float4 *b, float4 *c)
+{
+ s2(a, b); 
+ s2(a, c);
+}
 
- temp = *x;
- *x = select(*y, *x, isless(*x, *y));
- *y = select(temp, *y, isless(temp, *y));
+void mx3(float4 *a, float4 *b, float4 *c)
+{
+ s2(b, c); 
+ s2(a, c);
+}
+
+void mnmx3(float4 *a, float4 *b, float4 *c)
+{
+ mx3(a, b, c); 
+ s2(a, b);
+}
+
+void mnmx4(float4 *a, float4 *b, float4 *c, float4 *d)
+{
+ s2(a, b); 
+ s2(c, d); 
+ s2(a, c); 
+ s2(b, d);
+}
+
+void mnmx5(float4 *a, float4 *b, float4 *c, float4 *d, float4 *e)
+{
+ s2(a, b); 
+ s2(c, d); 
+ mn3(a, c, e); mx3(b, d, e);
+}
+
+void mnmx6(float4 *a, float4 *b, float4 *c, float4 *d, float4 *e, float4 *f)
+{
+ s2(a, d);
+ s2(b, e); 
+ s2(c, f); 
+ mn3(a, b, c); 
+ mx3(d, e, f);
 }
 
 __kernel void Median(
@@ -38,16 +78,11 @@ __kernel void Median(
  s[7] = read_imagef(input, sampler, pos + (int2)(0, 1));
  s[8] = read_imagef(input, sampler, pos + (int2)(1, 1));
  //rows
- sort(&s[0], &s[1], &s[2]);
- sort(&s[3], &s[4], &s[5]);
- sort(&s[6], &s[7], &s[8]);
- //columns
- sort(&s[0], &s[3], &s[6]);
- sort(&s[1], &s[4], &s[7]);
- sort(&s[2], &s[5], &s[8]);
- //diagonal
- sort(&s[0], &s[4], &s[8]);
- //result
+
+ mnmx6(&s[0], &s[1], &s[2], &s[3], &s[4], &s[5]);
+ mnmx5(&s[1], &s[2], &s[3], &s[4], &s[6]);
+ mnmx4(&s[2], &s[3], &s[4], &s[7]);
+ mnmx3(&s[3], &s[4], &s[8]);
  
  write_imagef(output, (int2)(pos.x, pos.y), s[4]);
 }

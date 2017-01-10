@@ -16,7 +16,7 @@ __kernel void asw_vSupport (
     float c_diff;
     float w;
    
-    int y = clamp(pos.y + pos.z - 16, 0, dim.y);
+    int y = clamp(pos.y + pos.z - 16, 0, dim.y - 1);
     p = read_imagef(input, sampler, (int2)(pos.x, pos.y)) * 255;
     q = read_imagef(input, sampler, (int2)(pos.x, y)) * 255;
     c_diff = (-1) * (fabs(p.x - q.x) + fabs(p.y - q.y) + fabs(p.z - q.z)) / 30.91f;

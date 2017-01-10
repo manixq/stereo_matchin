@@ -25,18 +25,20 @@ __kernel void asw_hCostAggregation(
  int x = 0;
  float c_num_h = 0.00001;
  float c_denom_h = 0.00001;
- float ww_h = 0;
- float ww_h_ = 0;
+ float ww = 0; 
+ int index_d = max(pos.x - pos.z, 0) + pos.y * dim.x;
+ int index = pos.x + pos.y * dim.x;
+ int size = dim.x * dim.y;
+ int size_ext = size * pos.z;
+
  for (int i = 0; i < 33; i++)
  {
   //H
-  x = clamp(pos.x + i - 16, 0, dim.x );
-  ww_h = supp_left[pos.x + pos.y * dim.x + dim.x * dim.y * i];
-  ww_h_ = supp_right[max(pos.x - pos.z, 0) + pos.y * dim.x + dim.x * dim.y * i];
-
-  c_num_h += ww_h * ww_h_ * denom_v[x + dim.x * pos.y + dim.x * dim.y * pos.z] * vertical_cost[x + dim.x * pos.y + dim.x * dim.y * pos.z];
-  c_denom_h += ww_h * ww_h_ * denom_v[x + dim.x * pos.y + dim.x * dim.y * pos.z];
+  x = clamp(pos.x + i - 16, 0, dim.x - 1);
+  ww = supp_left[index + size * i] * supp_right[index_d + size * i];
+  c_num_h += ww * denom_v[x + dim.x * pos.y + size_ext] * vertical_cost[x + dim.x * pos.y + size_ext];
+  c_denom_h += ww * denom_v[x + dim.x * pos.y + size_ext];
  }
  float result = c_num_h / c_denom_h;
- output_cost[pos.x + dim.x * pos.y + dim.x * dim.y * pos.z] = result;
+ output_cost[pos.x + dim.x * pos.y + size_ext] = result;
 }

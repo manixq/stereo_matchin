@@ -37,7 +37,7 @@ __kernel void asw_ref_h (
     for (int i = 0; i < 33; i++)
     {
      //H     
-     x = clamp(pos.x + i - 16, 0, dim.x );
+     x = clamp(pos.x + i - 16, 0, dim.x - 1);
      q = read_imagef(input, sampler, (int2)(x, pos.y)) * x_mult;
      ww_h = supp_h(p, q, (int2)(pos.x, pos.y), x);
      F = confidence[x + dim.x * pos.y];
