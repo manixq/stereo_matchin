@@ -3,7 +3,7 @@
 __kernel void Aggregation (
 	__read_only image2d_t input_l,
  __read_only image2d_t input_r,
- __global int* output_cost
+ __global float* output_cost
  )
 {
     const int2 pos = {get_global_id(0), get_global_id(1)};
@@ -12,17 +12,11 @@ __kernel void Aggregation (
     float4 left_pixel = read_imagef(input_l, sampler, pos);
     float4 right_pixel;
 
-    int color_similarity_r;
-    int color_similarity_g;
-    int color_similarity_b;
-    int result;
+    float result;
     for (int d = 0; d >= -60; d--)
     {  
      right_pixel = read_imagef(input_r, sampler, pos + (int2)(d, 0));
-     color_similarity_r = abs_diff((int)(1000 * left_pixel.x), (int)(1000 * right_pixel.x));
-     color_similarity_g = abs_diff((int)(1000 * left_pixel.y), (int)(1000 * right_pixel.y));
-     color_similarity_b = abs_diff((int)(1000 * left_pixel.z), (int)(1000 * right_pixel.z));
-     result = color_similarity_r + color_similarity_g + color_similarity_b;
-     output_cost[pos.x + dim.x * pos.y + dim.x * dim.y * (-1) * d] = (int)(result/3);
+     result = fabs(left_pixel.x - right_pixel.x) + fabs(left_pixel.y - right_pixel.y) + fabs(left_pixel.z - right_pixel.z);
+     output_cost[pos.x + dim.x * pos.y + dim.x * dim.y * (-1) * d] = result;
     }
 }

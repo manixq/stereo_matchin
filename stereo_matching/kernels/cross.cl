@@ -4,16 +4,17 @@ int check_similarity(image2d_t input, int2 pos, int old_one, int current_one, fl
 {
  float4 neighbour_data = read_imagef(input, sampler, pos);
  const int2 dim = get_image_dim(input);
- int color_similarity_r = abs_diff((int)(10000 * color_data.x), (int)(10000 * neighbour_data.x));
- int color_similarity_g = abs_diff((int)(10000 * color_data.y), (int)(10000 * neighbour_data.y));
- int color_similarity_b = abs_diff((int)(10000 * color_data.z), (int)(10000 * neighbour_data.z));
+ float color_similarity_r = fabs(color_data.x - neighbour_data.x);
+ float color_similarity_g = fabs(color_data.y - neighbour_data.y);
+ float color_similarity_b = fabs(color_data.z - neighbour_data.z);
  //10% error - and let it go
- int check_r = select(0, 1, isless((float)(color_similarity_r)/100, 20.0f));
- int check_g = select(0, 1, isless((float)(color_similarity_g)/100, 20.0f));
- int check_b = select(0, 1, isless((float)(color_similarity_b)/100, 20.0f));
+ float check_r = select(0.0f, 1.0f, isless(color_similarity_r, 0.10f));
+ float check_g = select(0.0f, 1.0f, isless(color_similarity_g, 0.10f));
+ float check_b = select(0.0f, 1.0f, isless(color_similarity_b, 0.10f));
+ float check = check_r + check_g + check_b;
  //if 1 then fail
- int flag = select(0, 1,isgreater((float)(current_one - old_one), 1.0f));
- current_one = select(old_one, current_one, islessequal(3.0f, (float)(check_r + check_b + check_g)));
+ int flag = select(0, 1, isgreater((float)(current_one - old_one), 1.0f));
+ current_one = select(old_one, current_one, islessequal(3.0f, check));
  flag = flag + select(0, 1, isless((float)(pos.x), 0.0f));
  flag = flag + select(0, 1, isless((float)(pos.y), 0.0f));
  flag = flag + select(0, 1, islessequal((float)(dim.x),(float)(pos.x)));

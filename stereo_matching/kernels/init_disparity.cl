@@ -1,14 +1,14 @@
 
 
 __kernel void Init_disparity (
- __global int* cost,
+ __global float* cost,
  __write_only image2d_t output
  )
 {
     const int2 pos = {get_global_id(0), get_global_id(1)};
     const int2 dim = get_image_dim(output);
     int min_d = 0;
-    int min_result = cost[pos.x + dim.x * pos.y];
+    float min_result = cost[pos.x + dim.x * pos.y];
 
     for (int i = 0; i <= 60; i++)
     {

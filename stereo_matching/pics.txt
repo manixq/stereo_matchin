@@ -1,0 +1,10 @@
+tsukuba/im3.png
+tsukuba/im5.png
+art/view1.png
+art/view5.png
+teddy/im2.png
+teddy/im6.png
+cones/im2.png
+cones/im6.png
+laundry/view1.png
+laundry/view5.png

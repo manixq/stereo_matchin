@@ -36,8 +36,8 @@ __kernel void asw_hCostAggregation(
   //H
   x = clamp(pos.x + i - 16, 0, dim.x - 1);
   ww = supp_left[index + size * i] * supp_right[index_d + size * i];
-  c_num_h += ww * denom_v[x + dim.x * pos.y + size_ext] * vertical_cost[x + dim.x * pos.y + size_ext];
-  c_denom_h += ww * denom_v[x + dim.x * pos.y + size_ext];
+  c_num_h += ww * vertical_cost[x + dim.x * pos.y + size_ext];
+  c_denom_h += ww;
  }
  float result = c_num_h / c_denom_h;
  output_cost[pos.x + dim.x * pos.y + size_ext] = result;

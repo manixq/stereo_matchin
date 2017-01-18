@@ -5,7 +5,8 @@ __kernel void Constistency(
  __read_only image2d_t tar,
  __global float* confidence_ref,
  __global float* confidence_tar,
- __write_only image2d_t output
+ __write_only image2d_t output,
+ __write_only image2d_t output_red
  )
 {
  
@@ -27,4 +28,5 @@ __kernel void Constistency(
  confidence_tar[pos.x + pos.y * dim.x] = select(0.0f, confidence_tar[pos.x + pos.y * dim.x], isless(fabs(pixel_tar.x - pixel_ref.x), 1.001f));
  
  write_imagef(output, (int2)(pos.x, pos.y),min(pixel_ref / 60, pixel_tar / 60));
+ write_imagef(output_red, (int2)(pos.x, pos.y), result );
 }
