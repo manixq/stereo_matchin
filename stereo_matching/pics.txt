@@ -1,4 +1,4 @@
-tsukuba/im3.png
+tsukuba/im1.png
 tsukuba/im5.png
 art/view1.png
 art/view5.png

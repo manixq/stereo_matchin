@@ -178,7 +178,7 @@ int main()
 
      fprintf(to_file,"\n%s - %s\n" ,buffer, folder_name[current_image].c_str());
      printf("\n%s\n", folder_name[current_image].c_str());
-     fprintf(to_file, "id\tmedL_solo\tmedR_solo\tmed_full\tcross_h\tcross_v\tcross_full\taggregation\tintegral_h\taggr_h\tintegral_v\taggr_v\tinit_disp\tfinal_disp\tcross method total\t\t\taggr\tsupp_w\tv_aggr_mean\th_aggr_mean\ttotal aggregation\twta\tconsistency\tv_ref_mean_L\tv_ref_mean_R\th_ref_mean_L\th_ref_mean_R\twta_mean_L\twta_mean_R\tconsistency_mean\ttotal refinement\tmedian\ttotal WTA method");
+     fprintf(to_file, "id\tmedL_solo\tmedR_solo\tmed_full\tcross_h\tcross_v\tcross_full\taggregation\tintegral_h\taggr_h\tintegral_v\taggr_v\tinit_disp\tfinal_disp\tcross method total\t\t\taggr\tsupp_w\tv_aggr_mean\th_aggr_mean\ttotal aggregation\twta\tconsistency\tv_ref_mean_L\tv_ref_mean_R\th_ref_mean_L\th_ref_mean_R\twta_mean_LR\tconsistency_mean\ttotal refinement\tmedian\ttotal WTA method");
 
      Image imgL;
      lodepng::decode(imgL.pixel, imgL.width, imgL.height, left_path[current_image]);
@@ -538,8 +538,8 @@ int main()
 
 
       printf("\nRefinement..");
-      temp = &asw_d_est_reference;
-      cl_mem * temp_target = &asw_d_est_target;
+      temp = &consistency_error;
+      cl_mem * temp_target = &asw_right_wta;
       ptr = &event_consist;
       cl_event ptr_doubled[2];
       for (int i = 0; i < k; i++)
@@ -562,31 +562,32 @@ int main()
 
        //horizontal refinement for left image
        clSetKernelArg(asw_ref_h, 0, sizeof(cl_mem), &inputImage_l);
-       clSetKernelArg(asw_ref_h, 1, sizeof(cl_mem), temp);
-       clSetKernelArg(asw_ref_h, 2, sizeof(cl_mem), &asw_confidence_reference);
-       clSetKernelArg(asw_ref_h, 3, sizeof(cl_mem), &asw_vref_l);
-       clSetKernelArg(asw_ref_h, 4, sizeof(cl_mem), &asw_href_l);
+       clSetKernelArg(asw_ref_h, 1, sizeof(cl_mem), &asw_confidence_reference);
+       clSetKernelArg(asw_ref_h, 2, sizeof(cl_mem), &asw_vref_l);
+       clSetKernelArg(asw_ref_h, 3, sizeof(cl_mem), &asw_href_l);
        ErCheck(clEnqueueNDRangeKernel(queue, asw_ref_h, 2, nullptr, size, nullptr, 1, &event_vreff_left[i], &event_hreff_left[i]));
 
 
        //horizontal refinement for right image
        clSetKernelArg(asw_ref_h, 0, sizeof(cl_mem), &inputImage_r);
-       clSetKernelArg(asw_ref_h, 1, sizeof(cl_mem), temp_target);
-       clSetKernelArg(asw_ref_h, 2, sizeof(cl_mem), &asw_confidence_target);
-       clSetKernelArg(asw_ref_h, 3, sizeof(cl_mem), &asw_vref_r);
-       clSetKernelArg(asw_ref_h, 4, sizeof(cl_mem), &asw_href_r);
+       clSetKernelArg(asw_ref_h, 1, sizeof(cl_mem), &asw_confidence_target);
+       clSetKernelArg(asw_ref_h, 2, sizeof(cl_mem), &asw_vref_r);
+       clSetKernelArg(asw_ref_h, 3, sizeof(cl_mem), &asw_href_r);
        ErCheck(clEnqueueNDRangeKernel(queue, asw_ref_h, 2, nullptr, size, nullptr, 1, &event_vreff_right[i], &event_hreff_right[i]));
 
 
        //WTA left image
        clSetKernelArg(asw_wta_ref, 0, sizeof(cl_mem), &asw_cost_buffer[1]);
        clSetKernelArg(asw_wta_ref, 1, sizeof(cl_mem), &asw_href_l);
-       clSetKernelArg(asw_wta_ref, 2, sizeof(cl_mem), &asw_left_wta);
-       clSetKernelArg(asw_wta_ref, 3, sizeof(cl_mem), &asw_wta_ref_l);
-       clSetKernelArg(asw_wta_ref, 4, sizeof(cl_mem), &asw_confidence_reference);
+       clSetKernelArg(asw_wta_ref, 2, sizeof(cl_mem), &asw_href_r);
+       clSetKernelArg(asw_wta_ref, 3, sizeof(cl_mem), &asw_left_wta);
+       clSetKernelArg(asw_wta_ref, 4, sizeof(cl_mem), &asw_right_wta);
+       clSetKernelArg(asw_wta_ref, 5, sizeof(cl_mem), &asw_wta_ref_l);
+       clSetKernelArg(asw_wta_ref, 6, sizeof(cl_mem), &asw_wta_ref_r);
+       clSetKernelArg(asw_wta_ref, 7, sizeof(cl_mem), &asw_confidence_reference);
+       clSetKernelArg(asw_wta_ref, 8, sizeof(cl_mem), &asw_confidence_target);
        ErCheck(clEnqueueNDRangeKernel(queue, asw_wta_ref, 2, nullptr, size, nullptr, 1, &event_hreff_left[i], &event_wta_ref_left[i]));
-
-
+       /*
        //WTA right image
        clSetKernelArg(asw_wta_ref, 0, sizeof(cl_mem), &asw_cost_buffer[1]);
        clSetKernelArg(asw_wta_ref, 1, sizeof(cl_mem), &asw_href_r);
@@ -594,10 +595,9 @@ int main()
        clSetKernelArg(asw_wta_ref, 3, sizeof(cl_mem), &asw_wta_ref_r);
        clSetKernelArg(asw_wta_ref, 4, sizeof(cl_mem), &asw_confidence_target);
        ErCheck(clEnqueueNDRangeKernel(queue, asw_wta_ref, 2, nullptr, size, nullptr, 1, &event_hreff_right[i], &event_wta_ref_right[i]));
-
-
-       ptr_doubled[0] = event_wta_ref_left[i];
-       ptr_doubled[1] = event_wta_ref_right[i];
+       */
+       //ptr_doubled[0] = event_wta_ref_left[i];
+      // ptr_doubled[1] = event_wta_ref_right[i];
        //Consistency check
        clSetKernelArg(consist_kernel, 0, sizeof(cl_mem), &asw_left_wta);
        clSetKernelArg(consist_kernel, 1, sizeof(cl_mem), &asw_right_wta);
@@ -605,12 +605,12 @@ int main()
        clSetKernelArg(consist_kernel, 3, sizeof(cl_mem), &asw_confidence_target);
        clSetKernelArg(consist_kernel, 4, sizeof(cl_mem), &consistency_error);
        clSetKernelArg(consist_kernel, 5, sizeof(cl_mem), &consistency_error_red_reff);
-       ErCheck(clEnqueueNDRangeKernel(queue, consist_kernel, 2, nullptr, size, nullptr, 2, ptr_doubled, &event_consist_refin[i]));
+       ErCheck(clEnqueueNDRangeKernel(queue, consist_kernel, 2, nullptr, size, nullptr, 1, &event_wta_ref_left[i], &event_consist_refin[i]));
 
 
        ptr = &event_consist_refin[i];
-       temp = &asw_wta_ref_l;
-       temp_target = &asw_wta_ref_r;
+       temp = &consistency_error;
+       temp_target = &asw_right_wta;
       }
       
       printf("\nPost Processing..\n\n");
@@ -687,11 +687,11 @@ int main()
       for (int i = 0; i < k; i++)
       {       
        mean += compute_time(event_wta_ref_left[0], "\n---WTA refinement left: ");
-       mean2 += compute_time(event_wta_ref_right[0], "\n---WTA refinement right: ");
+      // mean2 += compute_time(event_wta_ref_right[0], "\n---WTA refinement right: ");
       }
      
       fprintf(to_file, "%0.3f\t", mean / ( k));
-      fprintf(to_file, "%0.3f\t", mean2 / ( k));
+     // fprintf(to_file, "%0.3f\t", mean2 / ( k));
 
       mean = 0;
       for (int i = 0; i < k; i++)

@@ -27,8 +27,7 @@ __kernel void asw_WTA (
     int d_r = 0;    
     int min_d = 0;
 
-    int last_min = 0.01;
-    int last_min_r = 0;
+    
 
     float temp;
 

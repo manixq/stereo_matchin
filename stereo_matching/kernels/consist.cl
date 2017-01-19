@@ -27,6 +27,8 @@ __kernel void Constistency(
  confidence_ref[pos.x + pos.y * dim.x] = select(0.0f, confidence_ref[pos.x + pos.y * dim.x], isless(fabs(pixel_tar.x - pixel_ref.x), 1.001f));
  confidence_tar[pos.x + pos.y * dim.x] = select(0.0f, confidence_tar[pos.x + pos.y * dim.x], isless(fabs(pixel_tar.x - pixel_ref.x), 1.001f));
  
- write_imagef(output, (int2)(pos.x, pos.y),min(pixel_ref / 60, pixel_tar / 60));
+ float4 result_reff = select(pixel_tar / 60, pixel_ref / 60, isless(fabs(pixel_tar - pixel_ref), 1.001f));
+
+ write_imagef(output, (int2)(pos.x, pos.y),result_reff);
  write_imagef(output_red, (int2)(pos.x, pos.y), result );
 }

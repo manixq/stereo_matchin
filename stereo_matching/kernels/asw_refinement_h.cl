@@ -15,7 +15,6 @@ float supp_h(float4 p, float4 q, int2 pos, int x)
 //for every pixel p(x,y)
 __kernel void asw_ref_h (
  __read_only image2d_t input,
- __global float* input_est,
  __global float* confidence,
  __global float* input_REF,
  __global float* output_REF
@@ -25,7 +24,7 @@ __kernel void asw_ref_h (
     const int2 pos = {get_global_id(0), get_global_id(1)};
     const int2 dim = get_image_dim(input);
 
-    float x_mult = 500;
+    float x_mult = 255;
     int x = 0;
     float c_num_h = 0.00001;
     float c_denom_h = 0.00001;
